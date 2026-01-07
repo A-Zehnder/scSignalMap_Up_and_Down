@@ -514,7 +514,6 @@ export_for_neo4j = function(
   ))
 }
 
-                                      
 #' Generate Neo4j LOAD CSV script using local files from scSignalMap pipeline
 #'
 #' Automatically finds:
@@ -654,7 +653,68 @@ generate_neo4j_local_load_script = function(
   invisible(output_file)
 }
 
+#' Upload Neo4J CSV files to Google Drive and return direct download URLs
+#'
+#' @param output_dir Directory containing the CSV files (default "Neo4J/")
+#' @param folder_name Name of the Google Drive folder to create/use (default: auto-generated with dataset_name and date)
+#' @param dataset_name Name of the dataset (used in default folder name)
+#' @return Named vector of direct download URLs (names = filenames)
+#' @export
+upload_to_googledrive_and_generate_urls = function(
+  output_dir = "Neo4J/",
+  folder_name = NULL,
+  dataset_name = "scSignalMap"
+) {
+  if (!requireNamespace("googledrive", quietly = TRUE)) {
+    stop("Package 'googledrive' is required for Google Drive upload. Install it first.")
+  }
+  library(googledrive)
 
+  message("Authenticating with Google Drive...")
+  drive_auth()
+
+  # Default folder name if not provided
+  if (is.null(folder_name)) {
+    folder_name = paste0(dataset_name, "_Neo4j_", format(Sys.Date(), "%Y%m%d"))
+  }
+
+  message("Looking for/updating Google Drive folder: ", folder_name)
+  folder = drive_get(folder_name)
+  if (nrow(folder) == 0) {
+    folder = drive_mkdir(folder_name)
+    message("Created new folder: ", folder_name)
+  } else {
+    folder = folder[1, ]  # take first match
+    message("Using existing folder: ", folder_name)
+  }
+
+  # Find all CSV files
+  files = list.files(output_dir, pattern = "\\.csv$", full.names = TRUE)
+  if (length(files) == 0) {
+    stop("No CSV files found in ", output_dir)
+  }
+
+  message("Uploading ", length(files), " files to Google Drive...")
+  uploaded = lapply(files, function(f) {
+    message("Uploading: ", basename(f))
+    drive_upload(media = f, path = folder, overwrite = TRUE)
+  })
+  uploaded_df = do.call(rbind, uploaded)
+
+  # Make publicly readable
+  drive_share(uploaded_df, role = "reader", type = "anyone")
+  message("Files shared as 'anyone with link can view'")
+
+  # Generate direct download URLs
+  urls = setNames(
+    paste0("https://drive.google.com/uc?id=", uploaded_df$id, "&export=download"),
+    uploaded_df$name
+  )
+
+  message("Upload complete! Direct download URLs generated.")
+  return(urls)
+}
+                                      
 #' Generate Neo4j LOAD CSV script for cloud instances (Sandbox/Aura) using HTTPS URLs
 #'
 #' This version is for Neo4j cloud deployments (Sandbox, AuraDB) where local file:/// paths are not supported.
