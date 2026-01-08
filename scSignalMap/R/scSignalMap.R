@@ -999,11 +999,17 @@ run_full_scSignalMap_pipeline = function(
 #' @param neo4j_prefix Prefix for core Neo4J CSV filenames
 #' @param dataset_name Name/tag for this dataset in Neo4j
 #' @param generate_local_script Generate file:/// load script? (default TRUE)
-#' @param generate_cloud_script Generate HTTPS cloud script? (default FALSE)
-#' @param file_urls If generate_cloud_script=TRUE, a named vector of direct HTTPS download URLs 
-#'                  (names = filenames in Neo4J/, values = full URLs)
+#' @param generate_cloud_script Generate HTTPS cloud script? (default FALSE) – only used if use_google_drive = FALSE
+#' @param file_urls If generate_cloud_script=TRUE and use_google_drive=FALSE, a named vector of direct HTTPS download URLs
+#' (names = filenames in Neo4J/, values = full URLs)
+#' @param use_google_drive Logical; if TRUE automatically upload all CSV files to Google Drive,
+#'   make them publicly viewable, generate direct download URLs, and create a cloud load script.
+#'   Requires the 'googledrive' package and interactive authentication. Default FALSE.
+#' @param google_drive_folder_name Optional folder name on Google Drive. If NULL (default),
+#'   a folder is auto-named using dataset_name and current date.
 #' @param output_dir Directory for Neo4J CSVs and scripts (default "Neo4J/")
-#' @return Invisibly returns a list with paths to generated files and (if provided) cloud script
+#' @return Invisibly returns a list with paths to generated files (csv_files, local_script, cloud_script)
+#'   and, if use_google_drive=TRUE, the drive_urls used for the cloud script.
 #' @export
 run_post_processing_Neo4J = function(
     all_results,
@@ -1012,21 +1018,22 @@ run_post_processing_Neo4J = function(
     generate_local_script = TRUE,
     generate_cloud_script = FALSE,
     file_urls = NULL,
+    use_google_drive = FALSE,
+    google_drive_folder_name = NULL,
     output_dir = "Neo4J/"
 ) {
   # Create directories
   dir.create("enrichr_results", showWarnings = FALSE, recursive = TRUE)
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
-
+  
   # Global LR interactions (same across pairs)
   LR_interactions = all_results[[1]]$LR_interactions
-
+  
   message("Saving per-pair filtered enrichr results...")
   for (pair_name in names(all_results)) {
     res = all_results[[pair_name]]
     sender_clean = res$sender_clean
     receiver_clean = res$receiver_clean
-
     # Save filtered enrichr for Neo4J if exists
     if (!is.null(res$enrichr_filtered) && nrow(res$enrichr_filtered) > 0) {
       neo4j_file = file.path(output_dir,
@@ -1035,49 +1042,73 @@ run_post_processing_Neo4J = function(
       message("Saved ", nrow(res$enrichr_filtered), " pathways for ", pair_name)
     }
   }
-
+  
   # Export the three core tables
   export_for_neo4j(
     interactions = LR_interactions,
     output_dir = output_dir,
     prefix = neo4j_prefix
   )
-
+  
   generated_files = list.files(output_dir, pattern = "\\.csv$", full.names = FALSE)
   message("Generated ", length(generated_files), " CSV files in ", output_dir)
-
-  # Local script
+  
+  # Local script (default behavior)
+  local_script_path = NULL
   if (generate_local_script) {
+    local_script_path = file.path(output_dir, "load_scSignalMap_local.cypher")
     generate_neo4j_local_load_script(
       neo4j_dir = output_dir,
       dataset_name = dataset_name,
-      output_file = file.path(output_dir, "load_scSignalMap_local.cypher")
+      output_file = local_script_path
     )
   }
-
-  # Cloud script – only if URLs are provided
-  if (generate_cloud_script) {
+  
+  # Cloud script handling
+  cloud_script_path = NULL
+  drive_urls = NULL
+  
+  if (use_google_drive) {
+    message("use_google_drive = TRUE → uploading CSVs to Google Drive and generating cloud script...")
+    drive_urls = upload_to_googledrive_and_generate_urls(
+      output_dir = output_dir,
+      folder_name = google_drive_folder_name,
+      dataset_name = dataset_name
+    )
+    
+    cloud_script_path = file.path(output_dir, "load_scSignalMap_cloud.cypher")
+    generate_neo4j_cloud_load_script(
+      file_urls = drive_urls,
+      dataset_name = dataset_name,
+      output_file = cloud_script_path
+    )
+    message("Google Drive upload and cloud script generation complete.")
+    
+  } else if (generate_cloud_script) {
     if (is.null(file_urls) || length(file_urls) == 0) {
-      stop("file_urls must be provided when generate_cloud_script = TRUE")
+      stop("file_urls must be provided when generate_cloud_script = TRUE and use_google_drive = FALSE")
     }
     if (is.null(names(file_urls))) {
       stop("file_urls must be a named vector (names = exact filenames in ", output_dir, ")")
     }
-
+    
+    cloud_script_path = file.path(output_dir, "load_scSignalMap_cloud.cypher")
     generate_neo4j_cloud_load_script(
       file_urls = file_urls,
       dataset_name = dataset_name,
-      output_file = file.path(output_dir, "load_scSignalMap_cloud.cypher")
+      output_file = cloud_script_path
     )
   }
-
+  
   message("Post-processing complete.")
+  
   invisible(list(
     csv_files = generated_files,
-    local_script = if(generate_local_script) file.path(output_dir, "load_scSignalMap_local.cypher") else NULL,
-    cloud_script = if(generate_cloud_script) file.path(output_dir, "load_scSignalMap_cloud.cypher") else NULL
+    local_script = local_script_path,
+    cloud_script = cloud_script_path,
+    drive_urls = drive_urls  # NULL unless use_google_drive was TRUE
   ))
-}                                     
+}                                    
 
 ##' Create Master Interaction List
 #'
