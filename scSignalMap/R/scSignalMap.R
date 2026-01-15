@@ -530,10 +530,17 @@ export_for_neo4j = function(
 generate_neo4j_local_load_script = function(
   neo4j_dir = "Neo4J/",
   dataset_name,
-  output_file = file.path(neo4j_dir, "load_scSignalMap_local.cypher")
+  output_file = NULL,
+  output_dir = "Neo4J/"
 ) {
   if (missing(dataset_name) || is.null(dataset_name) || dataset_name == "") {
     stop("dataset_name must be provided and non-empty.")
+  }
+
+  # Default filename includes dataset_name
+  if (is.null(output_file)) {
+    safe_name = gsub("[^a-zA-Z0-9_-]", "_", dataset_name)
+    output_file = file.path(output_dir, paste0("load_scSignalMap_", safe_name, ".cypher"))
   }
 
   # Ensure directory ends with /
@@ -641,6 +648,8 @@ generate_neo4j_local_load_script = function(
   }
 
   # Save script
+  message("Generating local load script: ", output_file)
+    
   dir.create(dirname(output_file), showWarnings = FALSE, recursive = TRUE)
   writeLines(cypher, output_file)
 
@@ -731,8 +740,15 @@ upload_to_googledrive_and_generate_urls = function(
 generate_neo4j_cloud_load_script = function(
   file_urls,
   dataset_name = "Default",
-  output_file = "Neo4J/load_scSignalMap_cloud.cypher"
+  output_file = NULL,
+  output_dir = "Neo4J/"
 ) {
+  # Default filename includes dataset_name
+  if (is.null(output_file)) {
+    safe_name = gsub("[^a-zA-Z0-9_-]", "_", dataset_name)
+    output_file = file.path(output_dir, paste0("load_scSignalMap_cloud_", safe_name, ".cypher"))
+  }
+    
   # Validate that required core files are provided
   required_core = c(
     grep("_senders_ligands\\.csv$", names(file_urls), value = TRUE),
@@ -841,11 +857,14 @@ generate_neo4j_cloud_load_script = function(
       "  ON CREATE SET r.Addl_Linked_Genes = split(coalesce(row.Genes, ''), ';');"
     )
   }
-  
+
+  message("Generating cloud load script: ", output_file)
+    
   dir.create(dirname(output_file), showWarnings = FALSE, recursive = TRUE)
   writeLines(cypher, output_file)
   message("Cloud Neo4j load script generated: ", output_file)
   message("Run this script directly in your Neo4j Sandbox/Aura Browser.")
+  
   invisible(output_file)
 }
                                       
@@ -1056,11 +1075,10 @@ run_post_processing_Neo4J = function(
   # Local script (default behavior)
   local_script_path = NULL
   if (generate_local_script) {
-    local_script_path = file.path(output_dir, "load_scSignalMap_local.cypher")
-    generate_neo4j_local_load_script(
-      neo4j_dir = output_dir,
-      dataset_name = dataset_name,
-      output_file = local_script_path
+    local_script_path = generate_neo4j_local_load_script(
+      neo4j_dir     = output_dir,
+      dataset_name  = dataset_name
+      output_file = NULL   # automatic naming
     )
   }
   
@@ -1069,18 +1087,17 @@ run_post_processing_Neo4J = function(
   drive_urls = NULL
   
   if (use_google_drive) {
-    message("use_google_drive = TRUE → uploading CSVs to Google Drive and generating cloud script...")
+    message("use_google_drive = TRUE → uploading CSVs to Google Drive and generating cloud script...")  
     drive_urls = upload_to_googledrive_and_generate_urls(
-      output_dir = output_dir,
-      folder_name = google_drive_folder_name,
-      dataset_name = dataset_name
+      output_dir       = output_dir,
+      folder_name      = google_drive_folder_name,
+      dataset_name     = dataset_name
     )
-    
-    cloud_script_path = file.path(output_dir, "load_scSignalMap_cloud.cypher")
-    generate_neo4j_cloud_load_script(
-      file_urls = drive_urls,
-      dataset_name = dataset_name,
-      output_file = cloud_script_path
+
+    cloud_script_path = generate_neo4j_cloud_load_script(
+      file_urls    = drive_urls,
+      dataset_name = dataset_name
+      output_file = NULL   # automatic naming
     )
     message("Google Drive upload and cloud script generation complete.")
     
@@ -1092,11 +1109,9 @@ run_post_processing_Neo4J = function(
       stop("file_urls must be a named vector (names = exact filenames in ", output_dir, ")")
     }
     
-    cloud_script_path = file.path(output_dir, "load_scSignalMap_cloud.cypher")
-    generate_neo4j_cloud_load_script(
-      file_urls = file_urls,
-      dataset_name = dataset_name,
-      output_file = cloud_script_path
+    cloud_script_path = generate_neo4j_cloud_load_script(
+      file_urls    = file_urls,
+      dataset_name = dataset_name
     )
   }
   
