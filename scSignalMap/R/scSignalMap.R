@@ -539,11 +539,15 @@ generate_neo4j_local_load_script = function(
     stop("dataset_name must be provided and non-empty.")
   }
 
-  # Default filename includes dataset_name
+  # Default: place in Neo4J/<dataset_name>/ folder
+  safe_name = gsub("[^a-zA-Z0-9_-]", "_", dataset_name)
+  default_subdir = file.path(output_dir, dataset_name)
   if (is.null(output_file)) {
-    safe_name = gsub("[^a-zA-Z0-9_-]", "_", dataset_name)
-    output_file = file.path(output_dir, paste0("load_scSignalMap_", safe_name, ".cypher"))
+    output_file = file.path(default_subdir, paste0("load_scSignalMap_", safe_name, ".cypher"))
   }
+
+  # Ensure the dataset-specific subfolder exists
+  dir.create(default_subdir, showWarnings = FALSE, recursive = TRUE)
 
   # Ensure directory ends with /
   neo4j_dir = gsub("/+$", "/", neo4j_dir)
@@ -650,8 +654,6 @@ generate_neo4j_local_load_script = function(
 
   # Save script
   message("Generating local load script: ", output_file)
-    
-  dir.create(dirname(output_file), showWarnings = FALSE, recursive = TRUE)
   writeLines(cypher, output_file)
 
   message("Local Neo4j load script generated: ", output_file)
@@ -744,11 +746,15 @@ generate_neo4j_cloud_load_script = function(
   output_file = NULL,
   output_dir = "Neo4J/"
 ) {
-  # Default filename includes dataset_name
+  # Default: place in Neo4J/<dataset_name>/ folder
+  safe_name <- gsub("[^a-zA-Z0-9_-]", "_", dataset_name)
+  default_subdir <- file.path(output_dir, dataset_name)
   if (is.null(output_file)) {
-    safe_name = gsub("[^a-zA-Z0-9_-]", "_", dataset_name)
-    output_file = file.path(output_dir, paste0("load_scSignalMap_cloud_", safe_name, ".cypher"))
+    output_file <- file.path(default_subdir, paste0("load_scSignalMap_cloud_", safe_name, ".cypher"))
   }
+
+  # Ensure the dataset-specific subfolder exists
+  dir.create(default_subdir, showWarnings = FALSE, recursive = TRUE)
     
   # Validate that required core files are provided
   required_core = c(
@@ -858,8 +864,6 @@ generate_neo4j_cloud_load_script = function(
   }
 
   message("Generating cloud load script: ", output_file)
-    
-  dir.create(dirname(output_file), showWarnings = FALSE, recursive = TRUE)
   writeLines(cypher, output_file)
   message("Cloud Neo4j load script generated: ", output_file)
   message("You can now run this script directly in your Neo4j Sandbox/Aura Browser.")
