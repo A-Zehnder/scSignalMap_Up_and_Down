@@ -757,7 +757,7 @@ generate_neo4j_cloud_load_script = function(
     grep("_receptor_receiver\\.csv$", names(file_urls), value = TRUE)
   )
   if (length(required_core) < 3) {
-    stop("Missing one or more core files in file_urls. Need: *_senders_ligands.csv, *_ligands_receptor_pairs.csv, *_receptors_receivers.csv")
+    stop("Missing one or more core files in file_urls. Need: *_senders_ligands.csv, *_ligands_receptor_pairs.csv, *_receptor_receiver.csv")
   }
   
   sender_url = file_urls[grep("_senders_ligands\\.csv$", names(file_urls))]
