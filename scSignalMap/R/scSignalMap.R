@@ -496,6 +496,7 @@ export_for_neo4j = function(
   receiver_receptors = interactions %>%
     dplyr::select(
       Receptor_Symbol,
+      Receptor_Cells_Exp,
       Receptor_Counts,
       Receptor_gte_3,
       Receptor_gte_10,
