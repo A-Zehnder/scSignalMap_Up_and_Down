@@ -553,7 +553,7 @@ generate_neo4j_local_load_script = function(
 
   # Identify core files
   sender_file   = all_files[grep("_senders_ligands\\.csv$", all_files)]
-  lr_file       = all_files[grep("_ligands_receptor_pairs\\.csv$", all_files)]
+  lr_file       = all_files[grep("_ligand_receptor_pairs\\.csv$", all_files)]
   receiver_file = all_files[grep("_receptor_receiver\\.csv$", all_files)]
   pathway_files = all_files[grep("_enrichr_results_DATABASE2\\.csv$", all_files)]
 
@@ -753,15 +753,15 @@ generate_neo4j_cloud_load_script = function(
   # Validate that required core files are provided
   required_core = c(
     grep("_senders_ligands\\.csv$", names(file_urls), value = TRUE),
-    grep("_ligands_receptor_pairs\\.csv$", names(file_urls), value = TRUE),
+    grep("_ligand_receptor_pairs\\.csv$", names(file_urls), value = TRUE),
     grep("_receptor_receiver\\.csv$", names(file_urls), value = TRUE)
   )
   if (length(required_core) < 3) {
-    stop("Missing one or more core files in file_urls. Need: *_senders_ligands.csv, *_ligands_receptor_pairs.csv, *_receptor_receiver.csv")
+    stop("Missing one or more core files in file_urls. Need: *_senders_ligands.csv, *_ligand_receptor_pairs.csv, *_receptor_receiver.csv")
   }
   
   sender_url = file_urls[grep("_senders_ligands\\.csv$", names(file_urls))]
-  lr_url     = file_urls[grep("_ligands_receptor_pairs\\.csv$", names(file_urls))]
+  lr_url     = file_urls[grep("_ligand_receptor_pairs\\.csv$", names(file_urls))]
   receiver_url = file_urls[grep("_receptor_receiver\\.csv$", names(file_urls))]
   
   # Pathway files (optional)
