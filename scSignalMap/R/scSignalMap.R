@@ -464,13 +464,15 @@ export_for_neo4j = function(
       Ligand_secreted,
       Ligand_Counts,
       Ligand_gte_3,
-      Ligand_gte_10
-    ) #%>%
-    #dplyr::distinct()
+      Ligand_gte_10,
+      Ligand_Cells_Exp,
+      Ligand_Avg_Exp
+    ) %>%
+    dplyr::distinct()
 
   sender_file = file.path(output_dir, paste0(prefix, "_senders_ligands.csv"))
   write.csv(sender_ligands, sender_file, row.names = FALSE)
-  message("Saved senders to ligands: ", sender_file)
+  message("Saved ", nrow(sender_ligands), " unique sender-ligand rows: ", sender_file)
 
   # 2. Ligand - Receptor pairs
   lr_pairs = interactions %>%
@@ -479,16 +481,18 @@ export_for_neo4j = function(
       Ligand_Counts,
       Ligand_gte_3,
       Ligand_gte_10,
+      Ligand_Avg_Exp,
       Receptor_Symbol,
       Receptor_Counts,
       Receptor_gte_3,
-      Receptor_gte_10
-    ) #%>%
-    #dplyr::distinct()
+      Receptor_gte_10,
+      Receptor_Avg_Exp
+    ) %>%
+    dplyr::distinct()
 
-  lr_file = file.path(output_dir, paste0(prefix, "_ligands_receptor_pairs.csv"))
+  lr_file = file.path(output_dir, paste0(prefix, "_ligand_receptor_pairs.csv"))
   write.csv(lr_pairs, lr_file, row.names = FALSE)
-  message("Saved L-R pairs: ", lr_file)
+  message("Saved ", nrow(lr_pairs), " unique L-R rows: ", lr_file)
 
   # 3. Receptor - Receiver
   receiver_receptors = interactions %>%
@@ -498,14 +502,14 @@ export_for_neo4j = function(
       Receptor_gte_3,
       Receptor_gte_10,
       Receptor_Cluster_Marker,
-      Receiver,
-      Receptor_Avg_Exp
-    ) #%>%
-    #dplyr::distinct()
+      Receptor_Avg_Exp,
+      Receiver
+    ) %>%
+    dplyr::distinct()
 
-  receiver_file = file.path(output_dir, paste0(prefix, "_receptors_receivers.csv"))
+  receiver_file = file.path(output_dir, paste0(prefix, "_receptor_receiver.csv"))
   write.csv(receiver_receptors, receiver_file, row.names = FALSE)
-  message("Saved receptors to receivers: ", receiver_file)
+  message("Saved ", nrow(receiver_receptors), " unique receptor-receiver rows: ", receiver_file)
 
   invisible(list(
     sender_ligands = sender_file,
@@ -561,89 +565,88 @@ generate_neo4j_local_load_script = function(
 
   cypher = c(
     "// ================================================",
-    "// Auto-generated Neo4j import script for scSignalMap (LOCAL VERSION)",
+    "// Auto-generated Neo4j import script (LOCAL) - relationship properties model",
     paste0("// Dataset: ", dataset_name),
-    paste0("// Generated on: ", format(Sys.Date(), "%Y-%m-%d")),
-    "// All files are in one folder - copy everything to Neo4j import/",
+    paste0("// Generated: ", format(Sys.Date(), "%Y-%m-%d")),
     "// ================================================\n",
     paste0(":param dataset_name => '", dataset_name, "';\n"),
     "// Indexes",
-    "CREATE INDEX IF NOT EXISTS FOR (s:Sender) ON (s.name);",
-    "CREATE INDEX IF NOT EXISTS FOR (l:Ligand_Symbol) ON (l.name);",
-    "CREATE INDEX IF NOT EXISTS FOR (p:Receptor_Symbol) ON (p.name);",
-    "CREATE INDEX IF NOT EXISTS FOR (c:Receiver) ON (c.name);",
-    "CREATE INDEX IF NOT EXISTS FOR (z:Signal_Pathway_Info) ON (z.name);\n",
+    "CREATE INDEX IF NOT EXISTS FOR (n:Sender)          ON (n.name);",
+    "CREATE INDEX IF NOT EXISTS FOR (n:Ligand_Symbol)   ON (n.name);",
+    "CREATE INDEX IF NOT EXISTS FOR (n:Receptor_Symbol) ON (n.name);",
+    "CREATE INDEX IF NOT EXISTS FOR (n:Receiver)        ON (n.name);",
+    "CREATE INDEX IF NOT EXISTS FOR (n:Signal_Pathway_Info) ON (n.name);\n",
 
     "// 1. Sender → Ligand_Symbol",
     paste0('LOAD CSV WITH HEADERS FROM "file:///', sender_file, '" AS row'),
     "MERGE (s:Sender {name: row.Sender})",
-    "  SET s.dataset = coalesce(s.dataset, $dataset_name)",
+    "  SET s.datasets = coalesce(s.datasets, []) + $dataset_name",
     "MERGE (l:Ligand_Symbol {name: row.Ligand_Symbol})",
-    "  ON CREATE SET l += {",
-    "    counts: toInteger(coalesce(row.Ligand_Counts, 0)),",
-    "    l_exp_lvl_3: toFloat(coalesce(row.Ligand_gte_3, 0.0)),",
-    "    l_exp_lvl_10: toFloat(coalesce(row.Ligand_gte_10, 0.0)),",
-    "    Ligand_secreted: toBoolean(coalesce(row.Ligand_secreted, false)),",
-    "    dataset: $dataset_name",
-    "  }",
-    "  SET l.dataset = coalesce(l.dataset, $dataset_name)",
-    "MERGE (s)-[r:sender2ligand]->(l)",
-    "  ON CREATE SET r.Ligand_Avg_Exp = toFloat(coalesce(row.Ligand_Avg_Exp, 0.0));\n",
+    "  ON CREATE SET l.Ligand_secreted = toBoolean(coalesce(row.Ligand_secreted, false))",
+    "  SET l.datasets = coalesce(l.datasets, []) + $dataset_name",
+    "MERGE (s)-[r:sender2ligand {dataset: $dataset_name}]->(l)",
+    "  SET r.counts       = toInteger(coalesce(row.Ligand_Counts, 0)),",
+    "      r.gte_3        = toFloat(coalesce(row.Ligand_gte_3, 0.0)),",
+    "      r.gte_10       = toFloat(coalesce(row.Ligand_gte_10, 0.0)),",
+    "      r.cells_exp    = toFloat(coalesce(row.Ligand_Cells_Exp, 0.0)),",
+    "      r.avg_exp      = toFloat(coalesce(row.Ligand_Avg_Exp, 0.0));\n",
 
     "// 2. Ligand_Symbol → Receptor_Symbol",
     paste0('LOAD CSV WITH HEADERS FROM "file:///', lr_file, '" AS row'),
     "MERGE (l:Ligand_Symbol {name: row.Ligand_Symbol})",
-    "  SET l.dataset = coalesce(l.dataset, $dataset_name)",
+    "  SET l.datasets = coalesce(l.datasets, []) + $dataset_name",
     "MERGE (p:Receptor_Symbol {name: row.Receptor_Symbol})",
-    "  ON CREATE SET p += {",
-    "    counts: toInteger(coalesce(row.Receptor_Counts, 0)),",
-    "    r_exp_lvl_3: toFloat(coalesce(row.Receptor_gte_3, 0.0)),",
-    "    r_exp_lvl_10: toFloat(coalesce(row.Receptor_gte_10, 0.0)),",
-    "    dataset: $dataset_name",
-    "  }",
-    "  SET p.dataset = coalesce(p.dataset, $dataset_name)",
-    "MERGE (l)-[:ligand2receptorsymbol]->(p);\n",
+    "  SET p.datasets = coalesce(p.datasets, []) + $dataset_name",
+    "MERGE (l)-[r:ligand2receptor {dataset: $dataset_name}]->(p)",
+    "  SET r.ligand_counts  = toInteger(coalesce(row.Ligand_Counts, 0)),",
+    "      r.ligand_gte_3   = toFloat(coalesce(row.Ligand_gte_3, 0.0)),",
+    "      r.ligand_gte_10  = toFloat(coalesce(row.Ligand_gte_10, 0.0)),",
+    "      r.ligand_avg_exp = toFloat(coalesce(row.Ligand_Avg_Exp, 0.0)),",
+    "      r.receptor_counts  = toInteger(coalesce(row.Receptor_Counts, 0)),",
+    "      r.receptor_gte_3   = toFloat(coalesce(row.Receptor_gte_3, 0.0)),",
+    "      r.receptor_gte_10  = toFloat(coalesce(row.Receptor_gte_10, 0.0)),",
+    "      r.receptor_avg_exp = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0));\n",
 
     "// 3. Receptor_Symbol → Receiver",
     paste0('LOAD CSV WITH HEADERS FROM "file:///', receiver_file, '" AS row'),
     "MERGE (p:Receptor_Symbol {name: row.Receptor_Symbol})",
-    "  ON CREATE SET p.Receptor_Cluster_Marker = toBoolean(coalesce(row.Receptor_Cluster_Marker, false))",
-    "  SET p.dataset = coalesce(p.dataset, $dataset_name)",
+    "  SET p.datasets = coalesce(p.datasets, []) + $dataset_name",
     "MERGE (c:Receiver {name: row.Receiver})",
-    "  SET c.dataset = coalesce(c.dataset, $dataset_name)",
-    "MERGE (p)-[r:receptor2receivecluster]->(c)",
-    "  ON CREATE SET r.Receptor_Avg_Exp = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0));\n"
+    "  SET c.datasets = coalesce(c.datasets, []) + $dataset_name",
+    "MERGE (p)-[r:receptor2receiver {dataset: $dataset_name}]->(c)",
+    "  SET r.counts       = toInteger(coalesce(row.Receptor_Counts, 0)),",
+    "      r.gte_3        = toFloat(coalesce(row.Receptor_gte_3, 0.0)),",
+    "      r.gte_10       = toFloat(coalesce(row.Receptor_gte_10, 0.0)),",
+    "      r.is_marker    = toBoolean(coalesce(row.Receptor_Cluster_Marker, false)),",
+    "      r.avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0));\n"
   )
 
   if (length(pathway_files) > 0) {
     unwinds = character()
     for (f in pathway_files) {
       receiver = sub(".*_", "", sub("_enrichr_results_DATABASE2\\.csv$", "", f))
-      receiver = gsub("[.////]", "", receiver)
+      receiver = gsub("[^a-zA-Z0-9]", "", receiver)
       unwinds = c(unwinds, paste0(' {file: "', f, '", receiver: "', receiver, '"}'))
     }
 
     cypher = c(cypher,
-      "// 4. Receiver → Signal_Pathway_Info (filtered pathways)",
+      "// 4. Receiver → Signal_Pathway_Info",
       "UNWIND [",
-      paste(unwinds, collapse = ",\n"),
+      paste(unwinds, collapse = ",\n  "),
       "] AS item",
       'LOAD CSV WITH HEADERS FROM "file:///" + item.file AS row',
       "WITH item.receiver AS recvName, row",
       "WHERE row.Term IS NOT NULL",
       "MERGE (c:Receiver {name: recvName})",
-      "  SET c.dataset = coalesce(c.dataset, $dataset_name)",
+      "  SET c.datasets = coalesce(c.datasets, []) + $dataset_name",
       "MERGE (z:Signal_Pathway_Info {name: row.Term})",
-      "  ON CREATE SET z += {",
-      "    Database: coalesce(row.database, 'Unknown'),",
-      "    Pathway_Adjusted_P_Value: toFloat(coalesce(row.Adjusted_P_value, 999)),",
-      "    Combined_Score: toFloat(coalesce(row.Combined_Score, 0.0)),",
-      "    Matching_Receptors: split(coalesce(row.Matching_Receptors, ''), ';'),",
-      "    dataset: $dataset_name",
-      "  }",
-      "  SET z.dataset = coalesce(z.dataset, $dataset_name)",
-      "MERGE (c)-[r:receiver2signalpathway]->(z)",
-      "  ON CREATE SET r.Addl_Linked_Genes = split(coalesce(row.Genes, ''), ';');"
+      "  SET z.datasets = coalesce(z.datasets, []) + $dataset_name",
+      "MERGE (c)-[r:receiver_has_pathway {dataset: $dataset_name}]->(z)",
+      "  SET r.database               = coalesce(row.database, 'Unknown'),",
+      "      r.adj_p_value            = toFloat(coalesce(row.Adjusted_P_value, 999)),",
+      "      r.combined_score         = toFloat(coalesce(row.Combined_Score, 0.0)),",
+      "      r.matching_receptors     = split(coalesce(row.Matching_Receptors, ''), ';'),",
+      "      r.additional_linked_genes = split(coalesce(row.Genes, ''), ';');"
     )
   }
 
@@ -768,93 +771,91 @@ generate_neo4j_cloud_load_script = function(
   
   cypher = c(
     "// ================================================",
-    "// Auto-generated Neo4j import script for scSignalMap (CLOUD VERSION)",
+    "// Auto-generated Neo4j import script (CLOUD VERSION) - relationship properties model",
     paste0("// Dataset: ", dataset_name),
-    paste0("// Generated on: ", format(Sys.Date(), "%Y-%m-%d")),
-    "// Uses direct HTTPS URLs (e.g., Google Drive direct download links)",
-    "// Run this directly in Neo4j Browser on your Sandbox/Aura instance",
+    paste0("// Generated: ", format(Sys.Date(), "%Y-%m-%d")),
+    "// Uses direct HTTPS URLs (Google Drive / other public links)",
     "// ================================================\n",
     paste0(":param dataset_name => '", dataset_name, "';\n"),
     "// Indexes",
-    "CREATE INDEX IF NOT EXISTS FOR (s:Sender) ON (s.name);",
-    "CREATE INDEX IF NOT EXISTS FOR (l:Ligand_Symbol) ON (l.name);",
-    "CREATE INDEX IF NOT EXISTS FOR (p:Receptor_Symbol) ON (p.name);",
-    "CREATE INDEX IF NOT EXISTS FOR (c:Receiver) ON (c.name);",
-    "CREATE INDEX IF NOT EXISTS FOR (z:Signal_Pathway_Info) ON (z.name);\n",
-    
-    "// 1. Sender to Ligand_Symbol",
+    "CREATE INDEX IF NOT EXISTS FOR (n:Sender)              ON (n.name);",
+    "CREATE INDEX IF NOT EXISTS FOR (n:Ligand_Symbol)       ON (n.name);",
+    "CREATE INDEX IF NOT EXISTS FOR (n:Receptor_Symbol)     ON (n.name);",
+    "CREATE INDEX IF NOT EXISTS FOR (n:Receiver)            ON (n.name);",
+    "CREATE INDEX IF NOT EXISTS FOR (n:Signal_Pathway_Info) ON (n.name);\n",
+
+    "// 1. Sender → Ligand_Symbol",
     paste0('LOAD CSV WITH HEADERS FROM "', sender_url, '" AS row'),
     "MERGE (s:Sender {name: row.Sender})",
-    " ON CREATE SET s.dataset = $dataset_name",
-    " SET s.dataset = coalesce(s.dataset, $dataset_name)",
+    "  SET s.datasets = coalesce(s.datasets, []) + $dataset_name",
     "MERGE (l:Ligand_Symbol {name: row.Ligand_Symbol})",
-    " ON CREATE SET l += {",
-    " counts: toInteger(coalesce(row.Ligand_Counts, 0)),",
-    " l_exp_lvl_3: toFloat(coalesce(row.Ligand_gte_3, 0.0)),",
-    " l_exp_lvl_10: toFloat(coalesce(row.Ligand_gte_10, 0.0)),",
-    " Ligand_secreted: toBoolean(coalesce(row.Ligand_secreted, false)),",
-    " dataset: $dataset_name",
-    " }",
-    " SET l.dataset = coalesce(l.dataset, $dataset_name)",
-    "MERGE (s)-[r:sender2ligand]->(l)",
-    " ON CREATE SET r.Ligand_Avg_Exp = toFloat(coalesce(row.Ligand_Avg_Exp, 0.0));\n",
-    
-    "// 2. Ligand_Symbol to Receptor_Symbol",
+    "  ON CREATE SET l.Ligand_secreted = toBoolean(coalesce(row.Ligand_secreted, false))",
+    "  SET l.datasets = coalesce(l.datasets, []) + $dataset_name",
+    "MERGE (s)-[r:sender2ligand {dataset: $dataset_name}]->(l)",
+    "  SET r.counts       = toInteger(coalesce(row.Ligand_Counts, 0)),",
+    "      r.gte_3        = toFloat(coalesce(row.Ligand_gte_3, 0.0)),",
+    "      r.gte_10       = toFloat(coalesce(row.Ligand_gte_10, 0.0)),",
+    "      r.cells_exp    = toFloat(coalesce(row.Ligand_Cells_Exp, 0.0)),",
+    "      r.avg_exp      = toFloat(coalesce(row.Ligand_Avg_Exp, 0.0));\n",
+
+    "// 2. Ligand_Symbol → Receptor_Symbol",
     paste0('LOAD CSV WITH HEADERS FROM "', lr_url, '" AS row'),
     "MERGE (l:Ligand_Symbol {name: row.Ligand_Symbol})",
-    " SET l.dataset = coalesce(l.dataset, $dataset_name)",
+    "  SET l.datasets = coalesce(l.datasets, []) + $dataset_name",
     "MERGE (p:Receptor_Symbol {name: row.Receptor_Symbol})",
-    " ON CREATE SET p += {",
-    "  counts: toInteger(coalesce(row.Receptor_Counts, 0)),",
-    "  r_exp_lvl_3: toFloat(coalesce(row.Receptor_gte_3, 0.0)),",
-    "  r_exp_lvl_10: toFloat(coalesce(row.Receptor_gte_10, 0.0)),",
-    "  dataset: $dataset_name",
-    " }",
-    " SET p.dataset = coalesce(p.dataset, $dataset_name)",
-    "MERGE (l)-[:ligand2receptorsymbol]->(p);\n",
-    
-    "// 3. Receptor_Symbol to Receiver",
+    "  SET p.datasets = coalesce(p.datasets, []) + $dataset_name",
+    "MERGE (l)-[r:ligand2receptor {dataset: $dataset_name}]->(p)",
+    "  SET r.ligand_counts   = toInteger(coalesce(row.Ligand_Counts, 0)),",
+    "      r.ligand_gte_3    = toFloat(coalesce(row.Ligand_gte_3, 0.0)),",
+    "      r.ligand_gte_10   = toFloat(coalesce(row.Ligand_gte_10, 0.0)),",
+    "      r.ligand_avg_exp  = toFloat(coalesce(row.Ligand_Avg_Exp, 0.0)),",
+    "      r.receptor_counts   = toInteger(coalesce(row.Receptor_Counts, 0)),",
+    "      r.receptor_gte_3    = toFloat(coalesce(row.Receptor_gte_3, 0.0)),",
+    "      r.receptor_gte_10   = toFloat(coalesce(row.Receptor_gte_10, 0.0)),",
+    "      r.receptor_avg_exp  = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0));\n",
+
+    "// 3. Receptor_Symbol → Receiver",
     paste0('LOAD CSV WITH HEADERS FROM "', receiver_url, '" AS row'),
     "MERGE (p:Receptor_Symbol {name: row.Receptor_Symbol})",
-    "  ON CREATE SET p.Receptor_Cluster_Marker = toBoolean(coalesce(row.Receptor_Cluster_Marker, false))",
-    "  SET p.dataset = coalesce(p.dataset, $dataset_name)",
+    "  SET p.datasets = coalesce(p.datasets, []) + $dataset_name",
     "MERGE (c:Receiver {name: row.Receiver})",
-    "  SET c.dataset = coalesce(c.dataset, $dataset_name)",
-    "MERGE (p)-[r:receptor2receivecluster]->(c)",
-    "  ON CREATE SET r.Receptor_Avg_Exp = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0));\n"
+    "  SET c.datasets = coalesce(c.datasets, []) + $dataset_name",
+    "MERGE (p)-[r:receptor2receiver {dataset: $dataset_name}]->(c)",
+    "  SET r.counts       = toInteger(coalesce(row.Receptor_Counts, 0)),",
+    "      r.gte_3        = toFloat(coalesce(row.Receptor_gte_3, 0.0)),",
+    "      r.gte_10       = toFloat(coalesce(row.Receptor_gte_10, 0.0)),",
+    "      r.is_marker    = toBoolean(coalesce(row.Receptor_Cluster_Marker, false)),",
+    "      r.avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0));\n"
   )
-  
+
   if (length(pathway_urls) > 0) {
     unwinds = character()
     for (i in seq_along(pathway_urls)) {
       f_name = names(pathway_urls)[i]
-      url = pathway_urls[i]
-      # Extract receiver from filename (same logic as original)
+      url    = pathway_urls[i]
       receiver = sub(".*_", "", sub("_enrichr_results_DATABASE2\\.csv$", "", f_name))
-      receiver = gsub("[.////]", "", receiver)
+      receiver = gsub("[^a-zA-Z0-9]", "", receiver)
       unwinds = c(unwinds, paste0(' {url: "', url, '", receiver: "', receiver, '"}'))
     }
+
     cypher = c(cypher,
-      "// 4. Receiver to Signal_Pathway_Info (filtered pathways)",
+      "// 4. Receiver → Signal_Pathway_Info (filtered Enrichr pathways)",
       "UNWIND [",
-      paste(unwinds, collapse = ",\n"),
+      paste(unwinds, collapse = ",\n  "),
       "] AS item",
       'LOAD CSV WITH HEADERS FROM item.url AS row',
       "WITH item.receiver AS recvName, row",
       "WHERE row.Term IS NOT NULL",
       "MERGE (c:Receiver {name: recvName})",
-      "  SET c.dataset = coalesce(c.dataset, $dataset_name)",
+      "  SET c.datasets = coalesce(c.datasets, []) + $dataset_name",
       "MERGE (z:Signal_Pathway_Info {name: row.Term})",
-      "  ON CREATE SET z += {",
-      "    Database: coalesce(row.database, 'Unknown'),",
-      "    Pathway_Adjusted_P_Value: toFloat(coalesce(row.Adjusted_P_value, 999)),",
-      "    Combined_Score: toFloat(coalesce(row.Combined_Score, 0.0)),",
-      "    Matching_Receptors: split(coalesce(row.Matching_Receptors, ''), ';'),",
-      "    dataset: $dataset_name",
-      "  }",
-      "  SET z.dataset = coalesce(z.dataset, $dataset_name)",
-      "MERGE (c)-[r:receiver2signalpathway]->(z)",
-      "  ON CREATE SET r.Addl_Linked_Genes = split(coalesce(row.Genes, ''), ';');"
+      "  SET z.datasets = coalesce(z.datasets, []) + $dataset_name",
+      "MERGE (c)-[r:receiver_has_pathway {dataset: $dataset_name}]->(z)",
+      "  SET r.database                = coalesce(row.database, 'Unknown'),",
+      "      r.adj_p_value             = toFloat(coalesce(row.Adjusted_P_value, 999)),",
+      "      r.combined_score          = toFloat(coalesce(row.Combined_Score, 0.0)),",
+      "      r.matching_receptors      = split(coalesce(row.Matching_Receptors, ''), ';'),",
+      "      r.additional_linked_genes = split(coalesce(row.Genes, ''), ';');"
     )
   }
 
@@ -863,7 +864,7 @@ generate_neo4j_cloud_load_script = function(
   dir.create(dirname(output_file), showWarnings = FALSE, recursive = TRUE)
   writeLines(cypher, output_file)
   message("Cloud Neo4j load script generated: ", output_file)
-  message("Run this script directly in your Neo4j Sandbox/Aura Browser.")
+  message("You can now run this script directly in your Neo4j Sandbox/Aura Browser.")
   
   invisible(output_file)
 }
