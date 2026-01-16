@@ -459,8 +459,6 @@ export_for_neo4j = function(
     dplyr::select(
       Sender,
       Ligand_Symbol,
-      Ligand_Cells_Exp,
-      Ligand_Avg_Exp,
       Ligand_secreted,
       Ligand_Counts,
       Ligand_gte_3,
@@ -512,9 +510,9 @@ export_for_neo4j = function(
   message("Saved ", nrow(receiver_receptors), " unique receptor-receiver rows: ", receiver_file)
 
   invisible(list(
-    sender_ligands = sender_file,
+    sender_ligands      = sender_file,
     ligand_receptor_pairs = lr_file,
-    receiver_receptors = receiver_file
+    receptor_receiver    = receiver_file
   ))
 }
 
