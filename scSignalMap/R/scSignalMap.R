@@ -585,11 +585,11 @@ generate_neo4j_local_load_script = function(
     "  ON CREATE SET l.Ligand_secreted = toBoolean(coalesce(row.Ligand_secreted, false))",
     "  SET l.datasets = coalesce(l.datasets, []) + $dataset_name",
     "MERGE (s)-[r:sender2ligand {dataset: $dataset_name}]->(l)",
-    "  SET r.counts       = toInteger(coalesce(row.Ligand_Counts, 0)),",
-    "      r.gte_3        = toFloat(coalesce(row.Ligand_gte_3, 0.0)),",
-    "      r.gte_10       = toFloat(coalesce(row.Ligand_gte_10, 0.0)),",
-    "      r.cells_exp    = toFloat(coalesce(row.Ligand_Cells_Exp, 0.0)),",
-    "      r.avg_exp      = toFloat(coalesce(row.Ligand_Avg_Exp, 0.0));\n",
+    "  SET r.ligand_counts       = toInteger(coalesce(row.Ligand_Counts, 0)),",
+    "      r.ligand_gte_3        = toFloat(coalesce(row.Ligand_gte_3, 0.0)),",
+    "      r.ligand_gte_10       = toFloat(coalesce(row.Ligand_gte_10, 0.0)),",
+    "      r.ligand_cells_exp    = toFloat(coalesce(row.Ligand_Cells_Exp, 0.0)),",
+    "      r.ligand_avg_exp      = toFloat(coalesce(row.Ligand_Avg_Exp, 0.0));\n",
 
     "// 2. Ligand_Symbol → Receptor_Symbol",
     paste0('LOAD CSV WITH HEADERS FROM "file:///', lr_file, '" AS row'),
@@ -614,11 +614,11 @@ generate_neo4j_local_load_script = function(
     "MERGE (c:Receiver {name: row.Receiver})",
     "  SET c.datasets = coalesce(c.datasets, []) + $dataset_name",
     "MERGE (p)-[r:receptor2receiver {dataset: $dataset_name}]->(c)",
-    "  SET r.counts       = toInteger(coalesce(row.Receptor_Counts, 0)),",
-    "      r.gte_3        = toFloat(coalesce(row.Receptor_gte_3, 0.0)),",
-    "      r.gte_10       = toFloat(coalesce(row.Receptor_gte_10, 0.0)),",
-    "      r.is_marker    = toBoolean(coalesce(row.Receptor_Cluster_Marker, false)),",
-    "      r.avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0));\n"
+    "  SET r.receptor_counts       = toInteger(coalesce(row.Receptor_Counts, 0)),",
+    "      r.receptor_gte_3        = toFloat(coalesce(row.Receptor_gte_3, 0.0)),",
+    "      r.receptor_gte_10       = toFloat(coalesce(row.Receptor_gte_10, 0.0)),",
+    "      r.receptor_is_marker    = toBoolean(coalesce(row.Receptor_Cluster_Marker, false)),",
+    "      r.receptor_avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0));\n"
   )
 
   if (length(pathway_files) > 0) {
@@ -792,11 +792,11 @@ generate_neo4j_cloud_load_script = function(
     "  ON CREATE SET l.Ligand_secreted = toBoolean(coalesce(row.Ligand_secreted, false))",
     "  SET l.datasets = coalesce(l.datasets, []) + $dataset_name",
     "MERGE (s)-[r:sender2ligand {dataset: $dataset_name}]->(l)",
-    "  SET r.counts       = toInteger(coalesce(row.Ligand_Counts, 0)),",
-    "      r.gte_3        = toFloat(coalesce(row.Ligand_gte_3, 0.0)),",
-    "      r.gte_10       = toFloat(coalesce(row.Ligand_gte_10, 0.0)),",
-    "      r.cells_exp    = toFloat(coalesce(row.Ligand_Cells_Exp, 0.0)),",
-    "      r.avg_exp      = toFloat(coalesce(row.Ligand_Avg_Exp, 0.0));\n",
+    "  SET r.ligand_counts       = toInteger(coalesce(row.Ligand_Counts, 0)),",
+    "      r.ligand_gte_3        = toFloat(coalesce(row.Ligand_gte_3, 0.0)),",
+    "      r.ligand_gte_10       = toFloat(coalesce(row.Ligand_gte_10, 0.0)),",
+    "      r.ligand_cells_exp    = toFloat(coalesce(row.Ligand_Cells_Exp, 0.0)),",
+    "      r.ligand_avg_exp      = toFloat(coalesce(row.Ligand_Avg_Exp, 0.0));\n",
 
     "// 2. Ligand_Symbol → Receptor_Symbol",
     paste0('LOAD CSV WITH HEADERS FROM "', lr_url, '" AS row'),
@@ -821,11 +821,11 @@ generate_neo4j_cloud_load_script = function(
     "MERGE (c:Receiver {name: row.Receiver})",
     "  SET c.datasets = coalesce(c.datasets, []) + $dataset_name",
     "MERGE (p)-[r:receptor2receiver {dataset: $dataset_name}]->(c)",
-    "  SET r.counts       = toInteger(coalesce(row.Receptor_Counts, 0)),",
-    "      r.gte_3        = toFloat(coalesce(row.Receptor_gte_3, 0.0)),",
-    "      r.gte_10       = toFloat(coalesce(row.Receptor_gte_10, 0.0)),",
-    "      r.is_marker    = toBoolean(coalesce(row.Receptor_Cluster_Marker, false)),",
-    "      r.avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0));\n"
+    "  SET r.receptor_counts       = toInteger(coalesce(row.Receptor_Counts, 0)),",
+    "      r.receptor_gte_3        = toFloat(coalesce(row.Receptor_gte_3, 0.0)),",
+    "      r.receptor_gte_10       = toFloat(coalesce(row.Receptor_gte_10, 0.0)),",
+    "      r.receptor_is_marker    = toBoolean(coalesce(row.Receptor_Cluster_Marker, false)),",
+    "      r.receptor_avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0));\n"
   )
 
   if (length(pathway_urls) > 0) {
