@@ -621,6 +621,7 @@ generate_neo4j_local_load_script = function(
     "      r.receptor_gte_3        = toFloat(coalesce(row.Receptor_gte_3, 0.0)),",
     "      r.receptor_gte_10       = toFloat(coalesce(row.Receptor_gte_10, 0.0)),",
     "      r.receptor_is_marker    = toBoolean(coalesce(row.Receptor_Cluster_Marker, false)),",
+    "      r.receptor_cells_exp    = toFloat(coalesce(row.Receptor_Cells_Exp, 0.0)),",
     "      r.receptor_avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0));\n"
   )
 
@@ -830,6 +831,7 @@ generate_neo4j_cloud_load_script = function(
     "      r.receptor_gte_3        = toFloat(coalesce(row.Receptor_gte_3, 0.0)),",
     "      r.receptor_gte_10       = toFloat(coalesce(row.Receptor_gte_10, 0.0)),",
     "      r.receptor_is_marker    = toBoolean(coalesce(row.Receptor_Cluster_Marker, false)),",
+    "      r.receptor_cells_exp    = toFloat(coalesce(row.Receptor_Cells_Exp, 0.0)),",
     "      r.receptor_avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0));\n"
   )
 
