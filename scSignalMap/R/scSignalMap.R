@@ -1083,7 +1083,8 @@ run_post_processing_Neo4J = function(
   if (generate_local_script) {
     local_script_path = generate_neo4j_local_load_script(
       neo4j_dir     = output_dir,
-      dataset_name  = dataset_name
+      dataset_name  = dataset_name,
+      output_dir = output_dir
       #output_file = NULL   # automatic naming
     )
   }
@@ -1102,7 +1103,8 @@ run_post_processing_Neo4J = function(
 
     cloud_script_path = generate_neo4j_cloud_load_script(
       file_urls    = drive_urls,
-      dataset_name = dataset_name
+      dataset_name = dataset_name,
+      output_dir = output_dir
       #output_file = NULL   # automatic naming
     )
     message("Google Drive upload and cloud script generation complete.")
@@ -1117,7 +1119,8 @@ run_post_processing_Neo4J = function(
     
     cloud_script_path = generate_neo4j_cloud_load_script(
       file_urls    = file_urls,
-      dataset_name = dataset_name
+      dataset_name = dataset_name,
+      output_dir = output_dir
     )
   }
   
