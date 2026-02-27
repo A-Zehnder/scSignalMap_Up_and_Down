@@ -16,6 +16,18 @@
 ## If this program is used in your analysis please              ##
 ## mention who built it. Thanks. :-)                            ##
 ##################################################################
+
+clean_name = function(x) {
+  x = as.character(x)
+  # Specific mappings first (most common offenders)
+  x = gsub("VSMC/Fibro\\.?|VSMC Fibro", "VSMCFibro", x, ignore.case = TRUE)
+  x = gsub("M inflam\\.?|Minflam", "Minflam", x, ignore.case = TRUE)
+  x = gsub("M TremHi|MTremHi", "FoamyM", x, ignore.case = TRUE)
+  x = gsub("Endo\\.?|Endothelial", "Endo", x, ignore.case = TRUE)
+  # General cleaning: remove anything that is NOT letter or number
+  x = gsub("[^A-Za-z0-9]", "", x)
+  x
+}
 #' Capturing signaling pathways using scRNA-seq data
 #'
 #' Function to capture signaling pathways using scRNA-seq data.
@@ -341,8 +353,8 @@ find_enriched_pathways = function(seurat_obj = NULL, de_condition_filtered = NUL
     data$Adjusted.P.value = p.adjust(data$P.value, method = adj_p_val_method)
     enrichment_results[[db]] = data
   }
-  receiver_celltypes_clean = gsub("[.////]", "", receiver_celltypes)
-  sender_celltypes_clean = gsub("[.////]", "", sender_celltypes)
+  receiver_celltypes_clean = clean_name(receiver_celltypes)
+  sender_celltypes_clean = clean_name(sender_celltypes)
   directory = paste0("enrichr_results/", sender_celltypes_clean, "_", receiver_celltypes_clean, "/")
   if (!dir.exists(directory)) {
     dir.create(directory)
@@ -451,9 +463,14 @@ export_for_neo4j = function(
   output_dir = "Neo4J/",
   prefix = "scSignalMap"
 ) {
-
+   
   if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
-
+  
+  # consistent names
+  interactions = interactions %>%
+    dplyr::mutate(Receiver = clean_name(Receiver),
+                  Sender = clean_name(Sender))
+  
   # 1. Sender - Ligand
   sender_ligands = interactions %>%
     dplyr::select(
@@ -628,7 +645,7 @@ generate_neo4j_local_load_script = function(
   if (length(pathway_files) > 0) {
     unwinds = character()
     for (f in pathway_files) {
-      receiver = sub(".*_", "", sub("_enrichr_results_DATABASE2\\.csv$", "", f))
+      receiver = clean_name(sub(".*_", "", sub("_enrichr_results_DATABASE2\\.csv$", "", f)))
       receiver = gsub("[^a-zA-Z0-9]", "", receiver)
       unwinds = c(unwinds, paste0(' {file: "', f, '", receiver: "', receiver, '"}'))
     }
@@ -749,10 +766,10 @@ generate_neo4j_cloud_load_script = function(
   output_dir = "Neo4J/"
 ) {
   # Default: place in Neo4J/<dataset_name>/ folder
-  safe_name <- gsub("[^a-zA-Z0-9_-]", "_", dataset_name)
-  default_subdir <- file.path(output_dir, dataset_name)
+  safe_name = gsub("[^a-zA-Z0-9_-]", "_", dataset_name)
+  default_subdir = file.path(output_dir, dataset_name)
   if (is.null(output_file)) {
-    output_file <- file.path(default_subdir, paste0("load_scSignalMap_cloud_", safe_name, ".cypher"))
+    output_file = file.path(default_subdir, paste0("load_scSignalMap_cloud_", safe_name, ".cypher"))
   }
 
   # Ensure the dataset-specific subfolder exists
@@ -840,7 +857,7 @@ generate_neo4j_cloud_load_script = function(
     for (i in seq_along(pathway_urls)) {
       f_name = names(pathway_urls)[i]
       url    = pathway_urls[i]
-      receiver = sub(".*_", "", sub("_enrichr_results_DATABASE2\\.csv$", "", f_name))
+      receiver = clean_name(sub(".*_", "", sub("_enrichr_results_DATABASE2\\.csv$", "", f_name)))
       receiver = gsub("[^a-zA-Z0-9]", "", receiver)
       unwinds = c(unwinds, paste0(' {url: "', url, '", receiver: "', receiver, '"}'))
     }
@@ -920,6 +937,14 @@ run_full_scSignalMap_pipeline = function(
   ### Run pipeline  ###
   #####################
   message("Running MapInteractions...")
+  
+  message("Standardizing cell type names...")
+  seurat_obj@meta.data[[celltype_column]] = clean_name(seurat_obj@meta.data[[celltype_column]])
+  # clean the lists the user passed
+  sender_celltypes = clean_name(sender_celltypes)
+  receiver_celltypes = clean_name(receiver_celltypes)
+  celltypes = clean_name(celltypes)
+  
   LR_interactions = MapInteractions(seurat_obj, 
                                     group_by = celltype_column,
                                     species=species)
@@ -937,8 +962,8 @@ run_full_scSignalMap_pipeline = function(
   for (sender in sender_celltypes) {
     for(receiver in receiver_celltypes) {
       
-      receiver_clean = gsub("[.////]", "", receiver)
-      sender_clean = gsub("[.////]", "", sender)
+      receiver_clean = clean_name(receiver)
+      sender_clean = clean_name(sender)
       
       pb$tick(tokens = list(sender = sender_clean, receiver = receiver_clean))
       
@@ -1067,7 +1092,8 @@ run_post_processing_Neo4J = function(
       message("Saved ", nrow(res$enrichr_filtered), " pathways for ", pair_name)
     }
   }
-  
+  LR_interactions = LR_interactions %>%
+    dplyr::mutate(Receiver = clean_name(Receiver))
   # Export the three core tables
   export_for_neo4j(
     interactions = LR_interactions,
