@@ -1001,6 +1001,15 @@ run_full_scSignalMap_pipeline = function(
           upreg_receptors = upreg_receptors,
           interactions = interactions_filtered)
       
+      #Save the ligand-receptor pairs that survived upregulation filtering
+      relevant_lr_pairs = upreg_receptors_filtered_and_compared %>%
+        dplyr::select(Ligand_Symbol, Receptor_Symbol) %>%
+        dplyr::distinct() %>%
+        dplyr::filter(!is.na(Ligand_Symbol) & !is.na(Receptor_Symbol))
+      
+      message("Found ", nrow(relevant_lr_pairs), " unique L-R pairs linked to upregulated receptors for this pair.")
+      all_results[[pair_name]]$relevant_lr_pairs = relevant_lr_pairs
+      
       message("Running pathway enrichment...")
       enrichr_results = find_enriched_pathways(
         seurat_obj = seurat_obj,
@@ -1078,6 +1087,25 @@ run_post_processing_Neo4J = function(
   
   # Global LR interactions (same across pairs)
   LR_interactions = all_results[[1]]$LR_interactions
+
+  message("Collecting all unique L-R pairs linked to upregulated receptors across every sender-receiver pair...")
+  all_relevant_lr <- bind_rows(
+    lapply(all_results, function(x) x$relevant_lr_pairs)
+  ) %>% 
+    dplyr::distinct()
+  
+  # error avoidance 
+  if (nrow(all_relevant_lr) == 0) {
+    warning("No upregulated-receptor L-R pairs found – using full interactions as fallback.")
+    LR_interactions_filtered <- LR_interactions
+  } else {
+    LR_interactions_filtered <- LR_interactions %>%
+      dplyr::inner_join(all_relevant_lr, 
+                        by = c("Ligand_Symbol", "Receptor_Symbol"))
+    
+    message("Filtered global interactions down to ", nrow(LR_interactions_filtered),
+            " rows (", nrow(all_relevant_lr), " unique L-R pairs).")
+  }
   
   message("Saving per-pair filtered enrichr results...")
   for (pair_name in names(all_results)) {
@@ -1094,9 +1122,9 @@ run_post_processing_Neo4J = function(
   }
   LR_interactions = LR_interactions %>%
     dplyr::mutate(Receiver = clean_name(Receiver))
-  # Export the three core tables
+  # Export the three core filtered map interaction tables
   export_for_neo4j(
-    interactions = LR_interactions,
+    interactions = LR_interactions_filtered,
     output_dir = output_dir,
     prefix = neo4j_prefix
   )
