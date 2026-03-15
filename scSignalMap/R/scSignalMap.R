@@ -1003,11 +1003,17 @@ run_full_scSignalMap_pipeline = function(
       
       #Save the ligand-receptor pairs that survived upregulation filtering
       relevant_lr_pairs = upreg_receptors_filtered_and_compared %>%
+        dplyr::filter(!is.na(Ligand_Symbol) & !is.na(Receptor_Symbol)) %>%
         dplyr::select(Ligand_Symbol, Receptor_Symbol) %>%
-        dplyr::distinct() %>%
-        dplyr::filter(!is.na(Ligand_Symbol) & !is.na(Receptor_Symbol))
+        dplyr::distinct()
       
-      message("Found ", nrow(relevant_lr_pairs), " unique L-R pairs linked to upregulated receptors for this pair.")
+      if (nrow(relevant_lr_pairs) == 0) {
+        message("Warning: No ligand-receptor pairs linked to upregulated receptors for ",
+                sender_clean, " → ", receiver_clean)
+      } else {
+        message("Found ", nrow(relevant_lr_pairs),
+                " unique L-R pairs connected to upregulated receptors for this pair.")
+      }
       all_results[[pair_name]]$relevant_lr_pairs = relevant_lr_pairs
       
       message("Running pathway enrichment...")
