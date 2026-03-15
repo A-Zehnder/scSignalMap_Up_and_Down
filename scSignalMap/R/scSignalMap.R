@@ -1051,7 +1051,8 @@ run_full_scSignalMap_pipeline = function(
         sender = sender,
         receiver = receiver,
         sender_clean = sender_clean,
-        receiver_clean = receiver_clean)
+        receiver_clean = receiver_clean,
+        relevant_lr_pairs = relevant_lr_pairs)
     }
   }
   
