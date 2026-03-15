@@ -964,6 +964,7 @@ run_full_scSignalMap_pipeline = function(
       
       receiver_clean = clean_name(receiver)
       sender_clean = clean_name(sender)
+      pair_name = paste0(sender_clean, "_", receiver_clean)
       
       pb$tick(tokens = list(sender = sender_clean, receiver = receiver_clean))
       
@@ -1002,7 +1003,7 @@ run_full_scSignalMap_pipeline = function(
           interactions = interactions_filtered)
       
       #Save the ligand-receptor pairs that survived upregulation filtering
-      relevant_lr_pairs <- upreg_receptors_filtered_and_compared %>%
+      relevant_lr_pairs = upreg_receptors_filtered_and_compared %>%
         dplyr::select(Ligand_Symbol, Receptor_Symbol = gene_symbol) %>%
         dplyr::distinct() %>%
         dplyr::filter(!is.na(Ligand_Symbol) & !is.na(Receptor_Symbol))
@@ -1038,7 +1039,7 @@ run_full_scSignalMap_pipeline = function(
       ###################################
       ### Return all results together ###
       ###################################
-      pair_name = paste0(sender_clean, "_", receiver_clean)
+      
       all_results[[pair_name]] = list(
         LR_interactions = LR_interactions,
         de_cond_celltype = de_cond_celltype,
