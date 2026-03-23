@@ -542,7 +542,7 @@ export_for_neo4j = function(
 #' and generates a complete Cypher script using file:/// paths.
 #'
 #' @param neo4j_dir Directory with all CSV files (default: "Neo4J/")
-#' @param dataset_name A string identifying this dataset (e.g., "Control", "Treatment_A").
+#' @param dataset_name A string identifying this dataset (e.g., "MoNP_VP", "GB3_BBB").
 #'        Required — will be added as a 'dataset' property on every node.
 #' @param output_file Where to save the .cypher script (default: "Neo4J/load_scSignalMap.cypher")
 #' @return Invisibly returns path to generated script
@@ -752,10 +752,10 @@ upload_to_googledrive_and_generate_urls = function(
 #' Instead, provide direct public HTTPS URLs to your CSV files hosted on Google Drive (or GitHub, Dropbox, etc.).
 #'
 #' @param file_urls A named vector where names are the original filenames (as expected by the script)
-#'                  and values are the direct HTTPS URLs (e.g., Google Drive download links).
-#'                  Example: c("my_senders_ligands.csv" = "https://drive.google.com/uc?id=abc123&export=download", ...)
-#' @param dataset_name A string identifying this dataset (e.g., "Control", "Treatment_A").
-#'        Will be added as a 'dataset' property on all nodes.
+#'       and values are the direct HTTPS URLs (e.g., Google Drive download links).
+#'       Example: c("*_senders_ligands.csv" = "https://drive.google.com/uc?id=abc123&export=download", ...)
+#' @param dataset_name A string identifying this dataset (e.g., "MoNP_VP", "GB3_BBB").
+#'       Will be added as a 'dataset' property on all nodes.
 #' @param output_file Path to save the generated .cypher script (default: "Neo4J/load_scSignalMap_cloud.cypher")
 #' @return Invisibly returns the path to the generated script
 #' @export
@@ -789,7 +789,7 @@ generate_neo4j_cloud_load_script = function(
   lr_url     = file_urls[grep("_ligand_receptor_pairs\\.csv$", names(file_urls))]
   receiver_url = file_urls[grep("_receptor_receiver\\.csv$", names(file_urls))]
   
-  # Pathway files (optional)
+  # Pathway files
   pathway_urls = file_urls[grep("_enrichr_results_DATABASE2\\.csv$", names(file_urls))]
   
   cypher = c(
@@ -1102,7 +1102,7 @@ run_post_processing_Neo4J = function(
   ) %>% 
     dplyr::distinct()
   
-  # error avoidance 
+  # Error avoidance and filtering LR interactions (all pairs) from receptors filtered and compared
   if (nrow(all_relevant_lr) == 0) {
     warning("No upregulated-receptor L-R pairs found – using full interactions as fallback.")
     LR_interactions_filtered <- LR_interactions
