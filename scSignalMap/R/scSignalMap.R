@@ -19,7 +19,7 @@
 
 clean_name = function(x) {
   x = as.character(x)
-  # Specific mappings first (most common offenders)
+  # Specific mappings first
   x = gsub("VSMC/Fibro\\.?|VSMC Fibro", "VSMCFibro", x, ignore.case = TRUE)
   x = gsub("M inflam\\.?|Minflam", "Minflam", x, ignore.case = TRUE)
   x = gsub("M TremHi|MTremHi", "FoamyM", x, ignore.case = TRUE)
@@ -453,7 +453,7 @@ filter_enrichr_by_upreg_receptors = function(enrichr_results, upreg_receptors_fi
 #'
 #' These are ideal for importing into Neo4j as nodes and relationships.
 #'
-#' @param interactions Dataframe from MapInteractions() (full pairs_data)
+#' @param interactions Dataframe from MapInteractions() (full pairs_data) is adjusted to filtered in post-processing
 #' @param output_dir Directory to save the three CSV files (default: "Neo4J/")
 #' @param prefix Prefix for filenames (e.g., "Q1_norm_test")
 #' @return Invisibly returns list of file paths created
@@ -940,7 +940,7 @@ run_full_scSignalMap_pipeline = function(
   
   message("Standardizing cell type names...")
   seurat_obj@meta.data[[celltype_column]] = clean_name(seurat_obj@meta.data[[celltype_column]])
-  # clean the lists the user passed
+  # clean the lists 
   sender_celltypes = clean_name(sender_celltypes)
   receiver_celltypes = clean_name(receiver_celltypes)
   celltypes = clean_name(celltypes)
@@ -1002,7 +1002,7 @@ run_full_scSignalMap_pipeline = function(
           upreg_receptors = upreg_receptors,
           interactions = interactions_filtered)
       
-      #Save the ligand-receptor pairs that survived upregulation filtering
+      # Save the ligand-receptor pairs that survived upregulation filtering for post-processing
       relevant_lr_pairs = upreg_receptors_filtered_and_compared %>%
         dplyr::select(Ligand_Symbol, Receptor_Symbol = gene_symbol) %>%
         dplyr::distinct() %>%
@@ -1065,8 +1065,8 @@ run_full_scSignalMap_pipeline = function(
 #' @param all_results List returned by run_full_scSignalMap_pipeline()
 #' @param neo4j_prefix Prefix for core Neo4J CSV filenames
 #' @param dataset_name Name/tag for this dataset in Neo4j
-#' @param generate_local_script Generate file:/// load script? (default TRUE)
-#' @param generate_cloud_script Generate HTTPS cloud script? (default FALSE) – only used if use_google_drive = FALSE
+#' @param generate_local_script Generate file:/// load script (default TRUE)
+#' @param generate_cloud_script Generate HTTPS cloud script (default FALSE) – only used if use_google_drive = FALSE
 #' @param file_urls If generate_cloud_script=TRUE and use_google_drive=FALSE, a named vector of direct HTTPS download URLs
 #' (names = filenames in Neo4J/, values = full URLs)
 #' @param use_google_drive Logical; if TRUE automatically upload all CSV files to Google Drive,
@@ -1130,7 +1130,8 @@ run_post_processing_Neo4J = function(
   }
   LR_interactions = LR_interactions %>%
     dplyr::mutate(Receiver = clean_name(Receiver))
-  # Export the three core filtered map interaction tables
+  
+  # Export the three core filtered map interaction tables from receptors filtered and compared
   export_for_neo4j(
     interactions = LR_interactions_filtered,
     output_dir = output_dir,
