@@ -18,8 +18,6 @@ library(AnnotationDbi)
 library(progress)
 library(googledrive)
 
-#seurat_obj = readRDS('analysis/extra_analysis/all_combined_sct.rds')
-
 # sender cells
 sender_all = c('Endo.','VSMC/Fibro.', 'Mo', 'M inflam.', 'M TremHi', 'DC', 'N', 'T')
 
