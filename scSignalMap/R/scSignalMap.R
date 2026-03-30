@@ -309,7 +309,7 @@ intersect_upreg_receptors_with_lr_interactions = function(upreg_receptors = NULL
   upreg_receptors_filtered_and_compared = upreg_receptors %>%
     dplyr::filter(gene_symbol %in% interactions$Receptor_Symbol)%>%
     dplyr::left_join(
-      interactions %>% dplyr::select(Ligand_Symbol, Receptor_Symbol),
+      interactions %>% dplyr::select(Ligand_Symbol, Receptor_Symbol, Receiver),
       by = c("gene_symbol" = "Receptor_Symbol"))
   
   return(upreg_receptors_filtered_and_compared)
@@ -1004,7 +1004,7 @@ run_full_scSignalMap_pipeline = function(
       
       # Save the ligand-receptor pairs that survived upregulation filtering for post-processing
       relevant_lr_pairs = upreg_receptors_filtered_and_compared %>%
-        dplyr::select(Ligand_Symbol, Receptor_Symbol = gene_symbol) %>%
+        dplyr::select(Ligand_Symbol, Receptor_Symbol = gene_symbol, Receiver) %>%
         dplyr::distinct() %>%
         dplyr::filter(!is.na(Ligand_Symbol) & !is.na(Receptor_Symbol))
       
@@ -1109,7 +1109,7 @@ run_post_processing_Neo4J = function(
   } else {
     LR_interactions_filtered <- LR_interactions %>%
       dplyr::inner_join(all_relevant_lr, 
-                        by = c("Ligand_Symbol", "Receptor_Symbol"))
+                        by = c("Ligand_Symbol", "Receptor_Symbol", "Receiver"))
     
     message("Filtered global interactions down to ", nrow(LR_interactions_filtered),
             " rows (", nrow(all_relevant_lr), " unique L-R pairs).")
