@@ -493,15 +493,7 @@ export_for_neo4j = function(
   lr_pairs = interactions %>%
     dplyr::select(
       Ligand_Symbol,
-      Ligand_Counts,
-      Ligand_gte_3,
-      Ligand_gte_10,
-      Ligand_Avg_Exp,
       Receptor_Symbol,
-      Receptor_Counts,
-      Receptor_gte_3,
-      Receptor_gte_10,
-      Receptor_Avg_Exp
     ) %>%
     dplyr::distinct()
 
