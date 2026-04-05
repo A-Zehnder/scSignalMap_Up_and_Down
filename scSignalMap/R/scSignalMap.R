@@ -481,6 +481,7 @@ export_for_neo4j = function(
       Ligand_gte_3,
       Ligand_gte_10,
       Ligand_Cells_Exp,
+      Ligand_Cluster_Marker,
       Ligand_Avg_Exp
     ) %>%
     dplyr::distinct()
