@@ -229,15 +229,15 @@ find_markers_btwn_cond_for_celltype = function(seurat_obj = NULL, prep_SCT = FAL
 }
 
 
-##' Identify upregulated receptors
+##' Identify upregulated and downregulated receptors
 #'
-#' This function identifies upregualted receptors from a given DE gene table using a chosen log2FC cutoff
+#' This function identifies upregualted and downregulated receptors from a given DE gene table using a chosen log2FC cutoff
 #'
 #' @param de_condition_filtered: differentially expressed genes output from find_markers_btwn_cond_for_celltype function
 #' @param FC_cutoff: desired cutoff for log2FC values using >= the absolute value, default is 0.3
 #' @return A dataframe with identified DE genes and their log2FC from previously chosen condition
 #' @export
-find_upreg_receptors = function(de_condition_filtered= NULL, FC_cutoff = 0.3, species = 'human') {
+find_upreg_downreg_receptors = function(de_condition_filtered= NULL, FC_cutoff = 0.3, species = 'human') {
 
     message("Loading ligand-receptor information")
     # Load MultiNicheNet ligand receptor interactions
@@ -252,9 +252,16 @@ find_upreg_receptors = function(de_condition_filtered= NULL, FC_cutoff = 0.3, sp
                       dplyr::filter(ensembl_id %in% receptor_genes & avg_log2FC >= FC_cutoff)
     upreg_receptors$gene_symbol = ensembl_to_symbol[upreg_receptors$ensembl_id]
 
-    upreg_receptors = upreg_receptors[, c("gene_symbol", setdiff(names(upreg_receptors), "gene_symbol"))]  
+    upreg_receptors = upreg_receptors[, c("gene_symbol", setdiff(names(upreg_receptors), "gene_symbol"))]
 
-    return(upreg_receptors)
+    message("Filter for downregulated receptors")
+    downreg_receptors = de_condition_filtered %>%
+                      dplyr::filter(ensembl_id %in% receptor_genes & avg_log2FC <= -FC_cutoff)
+    downreg_receptors$gene_symbol = ensembl_to_symbol[downreg_receptors$ensembl_id]
+
+    downreg_receptors = downreg_receptors[, c("gene_symbol", setdiff(names(downreg_receptors), "gene_symbol"))]
+
+    return(upreg_receptors, downreg_receptors)
 }
 
 
