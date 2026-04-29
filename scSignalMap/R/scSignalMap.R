@@ -195,18 +195,19 @@ MapInteractions = function(seurat_obj, group_by, avg_log2FC_gte = 0.25, p_val_ad
 #' @export
 find_markers_btwn_cond_for_celltype = function(seurat_obj = NULL, prep_SCT = FALSE, cond_column = NULL, cond_name1 = NULL, cond_name2 = NULL, celltype_column = NULL, celltype_name = NULL, FC_cutoff = 0.3, adj_p_val_cutoff = 0.05, ensdb = 'EnsDb.Hsapiens.v86') {
 
-    message("Preparing to run FindMarkers...")
-    if(prep_SCT==TRUE) {
-        seurat_obj = PrepSCTFindMarkers(seurat_obj)
-    }
-    seurat_obj = PrepSCTFindMarkers(seurat_obj)
+    #message("Preparing to run FindMarkers...")
+    #if(prep_SCT==TRUE) {
+    #    seurat_obj = PrepSCTFindMarkers(seurat_obj)
+    #}
 
     message("Subsetting and setting identities...")
-    cells.1 = rownames(seurat_obj@meta.data %>% dplyr::filter(!!sym(celltype_column) == celltype_name & sample == cond_name1))
-    cells.2 = rownames(seurat_obj@meta.data %>% dplyr::filter(!!sym(celltype_column) == celltype_name & sample == cond_name2))
+    cells_to_keep = rownames(seurat_obj@meta.data)[seurat_obj@meta.data[,celltype_column] == celltype_name]
+    subset_cells = subset(seurat_obj, cells = cells_to_keep)
+    Idents(subset_cells) = subset_cells@meta.data[,cond_column]
 
     message("Running FindMarkers...")
-    de_cells = FindMarkers(seurat_obj, ident.1=cells.1, ident.2=cells.2)
+    subset_cells = PrepSCTFindMarkers(subset_cells)
+    de_cells = FindMarkers(subset_cells, ident.1 = cond_name1, ident.2 = cond_name2, recorrect_umi = FALSE)
 
     message("Filtering DE genes by log2FC and adjusted p-value...")
     de_cond_celltype = de_cells %>%
