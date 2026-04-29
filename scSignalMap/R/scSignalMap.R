@@ -593,7 +593,7 @@ export_for_neo4j = function(
       Receptor_gte_10,
       Receptor_Cluster_Marker,
       Receptor_Avg_Exp,
-      ave_log2FC,
+      avg_log2FC,
       Direction,
       Receiver
     ) %>%
@@ -710,7 +710,7 @@ generate_neo4j_local_load_script = function(
     "      r.receptor_is_marker    = toBoolean(coalesce(row.Receptor_Cluster_Marker, false)),",
     "      r.receptor_cells_exp    = toFloat(coalesce(row.Receptor_Cells_Exp, 0.0)),",
     "      r.receptor_avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0)),",
-    "      r.ave_log2FC            = toFloat(coalesce(row.ave_log2FC, 0.0)),",
+    "      r.avg_log2FC            = toFloat(coalesce(row.avg_log2FC, 0.0)),",
     "      r.Direction             = row.Direction;\n"
   )
 
@@ -917,7 +917,7 @@ generate_neo4j_cloud_load_script = function(
     "      r.receptor_is_marker    = toBoolean(coalesce(row.Receptor_Cluster_Marker, false)),",
     "      r.receptor_cells_exp    = toFloat(coalesce(row.Receptor_Cells_Exp, 0.0)),",
     "      r.receptor_avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0)),",
-    "      r.ave_log2FC            = toFloat(coalesce(row.ave_log2FC, 0.0)),",
+    "      r.avg_log2FC            = toFloat(coalesce(row.avg_log2FC, 0.0)),",
     "      r.Direction             = row.Direction;\n"
   )
 
@@ -1081,7 +1081,7 @@ run_full_scSignalMap_pipeline = function(
                                            dplyr::mutate(Direction = "Up"), 
                                            downreg_receptors_filtered_and_compared %>% 
                                            dplyr::mutate(Direction = "Down")) %>%
-        dplyr::select(Ligand_Symbol, Receptor_Symbol = gene_symbol, Receiver, Direction, ave_log2FC) %>%
+        dplyr::select(Ligand_Symbol, Receptor_Symbol = gene_symbol, Receiver, Direction, avg_log2FC) %>%
         dplyr::distinct() %>%
         dplyr::filter(!is.na(Ligand_Symbol) & !is.na(Receptor_Symbol))
       
