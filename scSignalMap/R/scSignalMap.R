@@ -297,18 +297,19 @@ filter_lr_interactions = function(interactions = NULL, sender_celltypes = NULL, 
 
 
 #######################################################################
-## Intersect Upregulated Receptors with Ligand-Receptor Interactions ##
+## Intersect Upregulated and Downregulated Receptors with Ligand-Receptor Interactions ##
 #######################################################################
 
-##' Intersect upregulated receptors with filtered ligand-receptor interactions
+##' Intersect upregulated and downregulated receptors with filtered ligand-receptor interactions
 #'
 #' This function takes previously identified DE receptor genes from chosen condition and identifies overlapping interactions
 #'
 #' @param upreg_receptors: name for output file containing DE receptors
+#' @param downreg_receptors: name for output file containing DE receptors
 #' @param interactions: ligand-receptor interactions dataframe from map_interactions 
 #' @return A data frame of idendified DE receptor genes found in previously idendified interactions list
 #' @export
-intersect_upreg_receptors_with_lr_interactions = function(upreg_receptors = NULL, interactions = NULL) {
+intersect_upreg_downreg_receptors_with_lr_interactions = function(upreg_receptors = NULL, downreg_receptors = NULL, interactions = NULL) {
   
   message("Intersect upregulated receptors with filtered interactions")
   
@@ -317,8 +318,16 @@ intersect_upreg_receptors_with_lr_interactions = function(upreg_receptors = NULL
     dplyr::left_join(
       interactions %>% dplyr::select(Ligand_Symbol, Receptor_Symbol, Receiver),
       by = c("gene_symbol" = "Receptor_Symbol"))
+
+  message("Intersect downregulated receptors with filtered interactions")
   
-  return(upreg_receptors_filtered_and_compared)
+  downreg_receptors_filtered_and_compared = downreg_receptors %>%
+    dplyr::filter(gene_symbol %in% interactions$Receptor_Symbol)%>%
+    dplyr::left_join(
+      interactions %>% dplyr::select(Ligand_Symbol, Receptor_Symbol, Receiver),
+      by = c("gene_symbol" = "Receptor_Symbol"))
+  
+  return(upreg_receptors_filtered_and_compared, downreg_receptors_filtered_and_compared)
 }
 
 
