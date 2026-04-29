@@ -593,6 +593,7 @@ export_for_neo4j = function(
       Receptor_gte_10,
       Receptor_Cluster_Marker,
       Receptor_Avg_Exp,
+      ave_log2FC,
       Direction,
       Receiver
     ) %>%
@@ -709,6 +710,7 @@ generate_neo4j_local_load_script = function(
     "      r.receptor_is_marker    = toBoolean(coalesce(row.Receptor_Cluster_Marker, false)),",
     "      r.receptor_cells_exp    = toFloat(coalesce(row.Receptor_Cells_Exp, 0.0)),",
     "      r.receptor_avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0)),",
+    "      r.ave_log2FC            = toFloat(coalesce(row.ave_log2FC, 0.0)),",
     "      r.Direction             = row.Direction;\n"
   )
 
@@ -915,6 +917,7 @@ generate_neo4j_cloud_load_script = function(
     "      r.receptor_is_marker    = toBoolean(coalesce(row.Receptor_Cluster_Marker, false)),",
     "      r.receptor_cells_exp    = toFloat(coalesce(row.Receptor_Cells_Exp, 0.0)),",
     "      r.receptor_avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0)),",
+    "      r.ave_log2FC            = toFloat(coalesce(row.ave_log2FC, 0.0)),",
     "      r.Direction             = row.Direction;\n"
   )
 
