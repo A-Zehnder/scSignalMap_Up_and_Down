@@ -1012,11 +1012,14 @@ run_full_scSignalMap_pipeline = function(
           upreg_receptors = upreg_receptors,
           downreg_receptors = downreg_receptors,
           interactions = interactions_filtered)
-      upreg_filt = receptors_filtered_and_compared_results$upreg_filt
-      downreg_filt = receptors_filtered_and_compared_results$downreg_filt
+      upreg_receptors_filtered_and_compared = receptors_filtered_and_compared_results$upreg_filt
+      downreg_receptors_filtered_and_compared = receptors_filtered_and_compared_results$downreg_filt
       
       # Save the ligand-receptor pairs that survived up and down regulation filtering for post-processing
-      relevant_lr_pairs = dplyr::bind_rows(upreg_filt %>% mutate(Direction = "Up"), downreg_filt %>% mutate(Direction = "Down")) %>%
+      relevant_lr_pairs = dplyr::bind_rows(upreg_receptors_filtered_and_compared %>% 
+                                           dplyr::mutate(Direction = "Up"), 
+                                           downreg_receptors_filtered_and_compared %>% 
+                                           dplyr::mutate(Direction = "Down")) %>%
         dplyr::select(Ligand_Symbol, Receptor_Symbol = gene_symbol, Receiver, Direction) %>%
         dplyr::distinct() %>%
         dplyr::filter(!is.na(Ligand_Symbol) & !is.na(Receptor_Symbol))
@@ -1117,7 +1120,7 @@ run_post_processing_Neo4J = function(
   
   # Error avoidance and filtering LR interactions (all pairs) from receptors filtered and compared
   if (nrow(all_relevant_lr) == 0) {
-    warning("No upregulated-receptor L-R pairs found – using full interactions as fallback.")
+    warning("No up or down regulated-receptor L-R pairs found – using full interactions as fallback.")
     LR_interactions_filtered <- LR_interactions
   } else {
     LR_interactions_filtered <- LR_interactions %>%
