@@ -379,7 +379,7 @@ find_enriched_pathways = function(seurat_obj = NULL, de_condition_filtered = NUL
     write.csv(enrichment_results[[db]], file = output, row.names = FALSE)
   }
   
-  enrichment_results_combined = bind_rows(
+  enrichment_results_combined = dplyr::bind_rows(
     lapply(names(enrichment_results), function(db) {
       df = enrichment_results[[db]]
       df$database = db
@@ -387,7 +387,7 @@ find_enriched_pathways = function(seurat_obj = NULL, de_condition_filtered = NUL
   )
   
   # Rename the Genes so they are correct for mouse, and shouldn't hurt human
-  enrichr_results = enrichment_results_combined %>% mutate(tmp = paste(convert_me[strsplit(Genes, ";")[[1]]], collapse=';'))
+  enrichr_results = enrichment_results_combined %>% dplyr::mutate(tmp = paste(convert_me[strsplit(Genes, ";")[[1]]], collapse=';'))
   enrichr_results = enrichr_results[enrichr_results$Adjusted.P.value < adj_p_val_cutoff, ]
 
   return(enrichr_results)
@@ -1114,7 +1114,7 @@ run_post_processing_Neo4J = function(
   LR_interactions = all_results[[1]]$LR_interactions
 
   message("Collecting all unique L-R pairs linked to upregulated receptors across every sender-receiver pair...")
-  all_relevant_lr <- bind_rows(
+  all_relevant_lr = dplyr::bind_rows(
     lapply(all_results, function(x) x$relevant_lr_pairs)
   ) %>% 
     dplyr::distinct()
@@ -1123,9 +1123,9 @@ run_post_processing_Neo4J = function(
   
   if (nrow(all_relevant_lr) == 0) {
     warning("No up or down regulated-receptor L-R pairs found – using full interactions as fallback.")
-    LR_interactions_filtered <- LR_interactions
+    LR_interactions_filtered = LR_interactions
   } else {
-    LR_interactions_filtered <- LR_interactions %>%
+    LR_interactions_filtered = LR_interactions %>%
       dplyr::inner_join(all_relevant_lr, 
                         by = c("Ligand_Symbol", "Receptor_Symbol", "Receiver"))
     
@@ -1259,13 +1259,13 @@ create_master_interaction_list = function(
         dplyr::select(Receptor_Symbol, Direction) %>%
         dplyr::distinct()
       if (nrow(rec1_df) > 0) {
-        combined_df = bind_cols(cur_term_df[rep(1, nrow(rec1_df)), ], rec1_df)
+        combined_df = dplyr::bind_cols(cur_term_df[rep(1, nrow(rec1_df)), ], rec1_df)
         master_list[[length(master_list) + 1]] = combined_df
       }
     }
   }
 
-  master_list = bind_rows(master_list)
+  master_list = dplyr::bind_rows(master_list)
   
   return(master_list)
 }
