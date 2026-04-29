@@ -510,6 +510,7 @@ export_for_neo4j = function(
     dplyr::select(
       Ligand_Symbol,
       Receptor_Symbol,
+      Direction
     ) %>%
     dplyr::distinct()
 
@@ -1025,11 +1026,11 @@ run_full_scSignalMap_pipeline = function(
         dplyr::filter(!is.na(Ligand_Symbol) & !is.na(Receptor_Symbol))
       
       if (nrow(relevant_lr_pairs) == 0) {
-        message("Warning: No ligand-receptor pairs linked to upregulated receptors for ",
+        message("Warning: No ligand-receptor pairs linked to DE receptors for ",
                 sender_clean, " → ", receiver_clean)
       } else {
         message("Found ", nrow(relevant_lr_pairs),
-                " unique L-R pairs connected to upregulated receptors for this pair.")
+                " unique L-R pairs connected to DE receptors for this pair.")
       }
       all_results[[pair_name]]$relevant_lr_pairs = relevant_lr_pairs
       
@@ -1119,6 +1120,7 @@ run_post_processing_Neo4J = function(
     dplyr::distinct()
   
   # Error avoidance and filtering LR interactions (all pairs) from receptors filtered and compared
+  
   if (nrow(all_relevant_lr) == 0) {
     warning("No up or down regulated-receptor L-R pairs found – using full interactions as fallback.")
     LR_interactions_filtered <- LR_interactions
@@ -1238,7 +1240,7 @@ create_master_interaction_list = function(
   # Filtering down to terms
   matched = list()
   for(term1 in names(genes)) {
-      intersect1 = intersect(genes[[term1]],unique(de_receptors$gene_symbol))
+      intersect1 = intersect(genes[[term1]],unique(de_receptors$Receptor_Symbol))
       if(length(intersect1)>0) {
           matched[[term1]] = intersect1
       }
@@ -1252,6 +1254,10 @@ create_master_interaction_list = function(
     for (rec1 in matched[[term1]]) {
       rec1_df = scSignalMap_data_filtered %>%
         dplyr::filter(Receptor_Symbol == rec1)
+    direction_info = de_receptors %>%
+        dplyr::filter(Receptor_Symbol == rec1) %>%
+        dplyr::select(Receptor_Symbol, Direction) %>%
+        dplyr::distinct()
       if (nrow(rec1_df) > 0) {
         combined_df = bind_cols(cur_term_df[rep(1, nrow(rec1_df)), ], rec1_df)
         master_list[[length(master_list) + 1]] = combined_df
