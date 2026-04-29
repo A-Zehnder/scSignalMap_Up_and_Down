@@ -527,6 +527,7 @@ export_for_neo4j = function(
       Receptor_gte_10,
       Receptor_Cluster_Marker,
       Receptor_Avg_Exp,
+      Direction,
       Receiver
     ) %>%
     dplyr::distinct()
@@ -1010,13 +1011,14 @@ run_full_scSignalMap_pipeline = function(
       receptors_filtered_and_compared_results =
         intersect_upreg_downreg_receptors_with_lr_interactions(
           upreg_receptors = upreg_receptors,
+          downreg_receptors = downreg_receptors,
           interactions = interactions_filtered)
-      upreg_receptors_filtered_and_compared = receptors_filtered_and_compared_results$upreg_filt
-      downreg_receptors_filtered_and_compared = receptors_filtered_and_compared_results$downreg_filt
+      upreg_filt = receptors_filtered_and_compared_results$upreg_filt
+      downreg_filt = receptors_filtered_and_compared_results$downreg_filt
       
       # Save the ligand-receptor pairs that survived up and down regulation filtering for post-processing
-      relevant_lr_pairs = c(upreg_receptors_filtered_and_compared, downreg_receptors_filtered_and_compared) %>%
-        dplyr::select(Ligand_Symbol, Receptor_Symbol = gene_symbol, Receiver) %>%
+      relevant_lr_pairs = dplyr::bind_rows(upreg_filt %>% mutate(Direction = "Up"), downreg_filt %>% mutate(Direction = "Down")) %>%
+        dplyr::select(Ligand_Symbol, Receptor_Symbol = gene_symbol, Receiver, Direction) %>%
         dplyr::distinct() %>%
         dplyr::filter(!is.na(Ligand_Symbol) & !is.na(Receptor_Symbol))
       
