@@ -1081,7 +1081,7 @@ run_full_scSignalMap_pipeline = function(
                                            dplyr::mutate(Direction = "Up"), 
                                            downreg_receptors_filtered_and_compared %>% 
                                            dplyr::mutate(Direction = "Down")) %>%
-        dplyr::select(Ligand_Symbol, Receptor_Symbol = gene_symbol, Receiver, Direction) %>%
+        dplyr::select(Ligand_Symbol, Receptor_Symbol = gene_symbol, Receiver, Direction, ave_log2FC) %>%
         dplyr::distinct() %>%
         dplyr::filter(!is.na(Ligand_Symbol) & !is.na(Receptor_Symbol))
       
