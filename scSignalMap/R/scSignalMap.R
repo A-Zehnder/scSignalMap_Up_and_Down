@@ -415,11 +415,11 @@ filter_enrichr_by_upreg_receptors = function(enrichr_results, upreg_receptors_fi
   # Safety checks
   if (is.null(enrichr_results) || nrow(enrichr_results) == 0) {
     message("No enrichr results to filter.")
-    return(NULL)
+    return(data.frame())
   }
   if (is.null(upreg_receptors_filtered_and_compared) || nrow(upreg_receptors_filtered_and_compared) == 0) {
     message("No upregulated receptors – skipping enrichr filtering.")
-    return(NULL)
+    return(data.frame())
   }
 
   # Standardise column names (in case Adjusted.P.value vs Adjusted_P_value)
@@ -479,11 +479,11 @@ filter_enrichr_by_downreg_receptors = function(enrichr_results, downreg_receptor
   # Safety checks
   if (is.null(enrichr_results) || nrow(enrichr_results) == 0) {
     message("No enrichr results to filter.")
-    return(NULL)
+    return(data.frame())
   }
   if (is.null(downreg_receptors_filtered_and_compared) || nrow(downreg_receptors_filtered_and_compared) == 0) {
     message("No downregulated receptors – skipping enrichr filtering.")
-    return(NULL)
+    return(data.frame())
   }
 
   # Standardise column names (in case Adjusted.P.value vs Adjusted_P_value)
@@ -1116,11 +1116,16 @@ run_full_scSignalMap_pipeline = function(
 
       # Combine the up and down regulated receptor filtered pathaways from enrichr and add labeling for Neo4j
       enrichr_filtered_all = dplyr::bind_rows(
-        enrichr_filtered_up %>% 
-          dplyr::mutate(Path_Receptor_Direction = "Upreg DE Receptor"),
-        enrichr_filtered_down %>% 
-          dplyr::mutate(Path_Receptor_Direction = "Downreg DE Receptor")
-      ) %>%
+        if (!is.null(enrichr_filtered_up) && nrow(enrichr_filtered_up) > 0) 
+          enrichr_filtered_up %>% 
+          dplyr::mutate(Path_Receptor_Direction = "Upreg DE Receptor") 
+        else NULL,
+        
+        if (!is.null(enrichr_filtered_down) && nrow(enrichr_filtered_down) > 0) 
+          enrichr_filtered_down %>% 
+          dplyr::mutate(Path_Receptor_Direction = "Downreg DE Receptor") 
+        else NULL
+        ) %>% 
         dplyr::distinct()
                                              
       
