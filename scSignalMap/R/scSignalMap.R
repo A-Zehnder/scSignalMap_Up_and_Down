@@ -1259,7 +1259,7 @@ create_master_interaction_list = function(
         dplyr::select(Receptor_Symbol, Direction) %>%
         dplyr::distinct()
       if (nrow(rec1_df) > 0) {
-        combined_df = dplyr::bind_cols(cur_term_df[rep(1, nrow(rec1_df)), ], rec1_df)
+        combined_df = dplyr::bind_cols(cur_term_df[rep(1, nrow(rec1_df)), ], rec1_df, direction_info)
         master_list[[length(master_list) + 1]] = combined_df
       }
     }
