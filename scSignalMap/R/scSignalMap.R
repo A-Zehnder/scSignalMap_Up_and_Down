@@ -952,7 +952,6 @@ run_full_scSignalMap_pipeline = function(
   # clean the lists 
   sender_celltypes = clean_name(sender_celltypes)
   receiver_celltypes = clean_name(receiver_celltypes)
-  celltypes = clean_name(celltypes)
   
   LR_interactions = MapInteractions(seurat_obj, 
                                     group_by = celltype_column,
