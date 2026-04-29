@@ -1220,65 +1220,42 @@ run_post_processing_Neo4J = function(
 #' @export
 create_master_interaction_list = function(
   enrichr_results = results$enrichr_results,
-  de_receptors = results$upreg_receptors_filtered_and_compared,
+  de_receptors = results$relevant_lr_pairs,
   scSignalMap_data_filtered = results$interactions_filtered
 ) {
   
   ## Step 1: Clean Enrichr results
   enrichr_results = enrichr_results[, !(names(enrichr_results) %in% c("Old.P.value", "Old.Adjusted.P.value"))]
   
-  # Expand genes column
-  expanded_enrichr = enrichr_results %>%
-    tidyr::separate_rows(Genes, sep = ";") %>%
-    dplyr::mutate(Genes = stringr::str_trim(Genes))
-  
-  # Find common genes
-  common_genes = intersect(unique(expanded_enrichr$Genes), unique(de_receptors$gene_symbol))
-  
-  # Filter Enrichr results to only include common genes
-  enrichr_results = enrichr_results %>%
-    dplyr::filter(sapply(Genes, function(x) {
-      any(stringr::str_trim(unlist(strsplit(x, ";"))) %in% common_genes)
-    }))
-  
-  # Filter DE receptors to only include common genes
-  de_receptors = de_receptors %>%
-    dplyr::filter(gene_symbol %in% common_genes)
-  
-  ## Step 2: Build master list with DE receptor info
-  master_list = de_receptors[, c("gene_symbol", "avg_log2FC", "p_val_adj")]
-  colnames(master_list)[colnames(master_list) == "gene_symbol"] = "Receptor_Symbol"
-  
-  # Prepare Enrichr info for merging
-  expanded_enrichr_subset = expanded_enrichr %>%
-    dplyr::select(Genes, Term, Adjusted.P.value) %>%
-    dplyr::rename(Receptor_Symbol = Genes, enrichr_p_val_adj = Adjusted.P.value)
-  
-  # Merge DE receptor info with Enrichr results
-  master_list = dplyr::left_join(master_list, expanded_enrichr_subset, by = "Receptor_Symbol")
-  
-  ## Step 3: Merge with scSignalMap interactions
-  master_list = merge(
-    master_list,
-    scSignalMap_data_filtered,
-    by.x = "Receptor_Symbol",
-    by.y = "Receptor_Symbol",
-    all.x = TRUE,
-    sort = FALSE
-  )
-  
-  # Clean up: remove rows without receptor info
-  master_list = master_list[!is.na(master_list$Receptor_Symbol), ]
-  
-  # Remove unwanted column "X" if it exists
-  if ("X" %in% colnames(master_list)) master_list$X = NULL
-  
-  # Reorder columns so receptor symbol/info come first
-  if ("Receptor" %in% colnames(master_list)) {
-    cols = colnames(master_list)
-    new_order = c("Receptor_Symbol", "Receptor", setdiff(cols, c("Receptor_Symbol", "Receptor")))
-    master_list = master_list[, new_order]
+  # Break appart the genes
+  genes = sapply(enrichr_results$Genes, function(x) { strsplit(x,';')[[1]] })
+  names(genes) = enrichr_results$Term
+
+  # Filtering down to terms
+  matched = list()
+  for(term1 in names(genes)) {
+      intersect1 = intersect(genes[[term1]],unique(de_receptors$gene_symbol))
+      if(length(intersect1)>0) {
+          matched[[term1]] = intersect1
+      }
   }
+  
+  # Make the master list
+  master_list = vector("list", length = 0)
+  for (term1 in names(matched)) {
+    cur_term_df = enrichr_results %>%
+      dplyr::filter(Term == term1)
+    for (rec1 in matched[[term1]]) {
+      rec1_df = scSignalMap_data_filtered %>%
+        dplyr::filter(Receptor_Symbol == rec1)
+      if (nrow(rec1_df) > 0) {
+        combined_df = bind_cols(cur_term_df[rep(1, nrow(rec1_df)), ], rec1_df)
+        master_list[[length(master_list) + 1]] = combined_df
+      }
+    }
+  }
+
+  master_list = bind_rows(master_list)
   
   return(master_list)
 }
