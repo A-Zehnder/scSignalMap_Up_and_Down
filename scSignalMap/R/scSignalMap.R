@@ -682,6 +682,7 @@ generate_neo4j_local_load_script = function(
     "  SET r.ligand_counts       = toInteger(coalesce(row.Ligand_Counts, 0)),",
     "      r.ligand_gte_3        = toFloat(coalesce(row.Ligand_gte_3, 0.0)),",
     "      r.ligand_gte_10       = toFloat(coalesce(row.Ligand_gte_10, 0.0)),",
+    "      r.ligand_is_marker    = toBoolean(coalesce(row.Ligand_Cluster_Marker, false)),",
     "      r.ligand_cells_exp    = toFloat(coalesce(row.Ligand_Cells_Exp, 0.0)),",
     "      r.ligand_avg_exp      = toFloat(coalesce(row.Ligand_Avg_Exp, 0.0));\n",
 
@@ -692,14 +693,7 @@ generate_neo4j_local_load_script = function(
     "MERGE (p:Receptor_Symbol {name: row.Receptor_Symbol})",
     "  SET p.datasets = coalesce(p.datasets, []) + $dataset_name",
     "MERGE (l)-[r:ligand2receptor {dataset: $dataset_name}]->(p)",
-    "  SET r.ligand_counts  = toInteger(coalesce(row.Ligand_Counts, 0)),",
-    "      r.ligand_gte_3   = toFloat(coalesce(row.Ligand_gte_3, 0.0)),",
-    "      r.ligand_gte_10  = toFloat(coalesce(row.Ligand_gte_10, 0.0)),",
-    "      r.ligand_avg_exp = toFloat(coalesce(row.Ligand_Avg_Exp, 0.0)),",
-    "      r.receptor_counts  = toInteger(coalesce(row.Receptor_Counts, 0)),",
-    "      r.receptor_gte_3   = toFloat(coalesce(row.Receptor_gte_3, 0.0)),",
-    "      r.receptor_gte_10  = toFloat(coalesce(row.Receptor_gte_10, 0.0)),",
-    "      r.receptor_avg_exp = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0));\n",
+    "  SET r.Direction             = row.Direction;\n",
 
     "// 3. Receptor_Symbol → Receiver",
     paste0('LOAD CSV WITH HEADERS FROM "file:///', receiver_file, '" AS row'),
@@ -713,7 +707,8 @@ generate_neo4j_local_load_script = function(
     "      r.receptor_gte_10       = toFloat(coalesce(row.Receptor_gte_10, 0.0)),",
     "      r.receptor_is_marker    = toBoolean(coalesce(row.Receptor_Cluster_Marker, false)),",
     "      r.receptor_cells_exp    = toFloat(coalesce(row.Receptor_Cells_Exp, 0.0)),",
-    "      r.receptor_avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0));\n"
+    "      r.receptor_avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0)),",
+    "      r.Direction             = row.Direction;\n"
   )
 
   if (length(pathway_files) > 0) {
@@ -741,7 +736,8 @@ generate_neo4j_local_load_script = function(
       "      r.adj_p_value            = toFloat(coalesce(row.Adjusted_P_value, 999)),",
       "      r.combined_score         = toFloat(coalesce(row.Combined_Score, 0.0)),",
       "      r.matching_receptors     = split(coalesce(row.Matching_Receptors, ''), ';'),",
-      "      r.additional_linked_genes = split(coalesce(row.Genes, ''), ';');"
+      "      r.additional_linked_genes = split(coalesce(row.Genes, ''), ';'),",
+      "      r.Path_Receptor_Direction  = row.Path_Receptor_Direction;"
     )
   }
 
@@ -892,6 +888,7 @@ generate_neo4j_cloud_load_script = function(
     "  SET r.ligand_counts       = toInteger(coalesce(row.Ligand_Counts, 0)),",
     "      r.ligand_gte_3        = toFloat(coalesce(row.Ligand_gte_3, 0.0)),",
     "      r.ligand_gte_10       = toFloat(coalesce(row.Ligand_gte_10, 0.0)),",
+    "      r.ligand_is_marker    = toBoolean(coalesce(row.Ligand_Cluster_Marker, false)),",
     "      r.ligand_cells_exp    = toFloat(coalesce(row.Ligand_Cells_Exp, 0.0)),",
     "      r.ligand_avg_exp      = toFloat(coalesce(row.Ligand_Avg_Exp, 0.0));\n",
 
@@ -902,14 +899,7 @@ generate_neo4j_cloud_load_script = function(
     "MERGE (p:Receptor_Symbol {name: row.Receptor_Symbol})",
     "  SET p.datasets = coalesce(p.datasets, []) + $dataset_name",
     "MERGE (l)-[r:ligand2receptor {dataset: $dataset_name}]->(p)",
-    "  SET r.ligand_counts   = toInteger(coalesce(row.Ligand_Counts, 0)),",
-    "      r.ligand_gte_3    = toFloat(coalesce(row.Ligand_gte_3, 0.0)),",
-    "      r.ligand_gte_10   = toFloat(coalesce(row.Ligand_gte_10, 0.0)),",
-    "      r.ligand_avg_exp  = toFloat(coalesce(row.Ligand_Avg_Exp, 0.0)),",
-    "      r.receptor_counts   = toInteger(coalesce(row.Receptor_Counts, 0)),",
-    "      r.receptor_gte_3    = toFloat(coalesce(row.Receptor_gte_3, 0.0)),",
-    "      r.receptor_gte_10   = toFloat(coalesce(row.Receptor_gte_10, 0.0)),",
-    "      r.receptor_avg_exp  = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0));\n",
+    "  SET r.Direction             = row.Direction;\n",
 
     "// 3. Receptor_Symbol → Receiver",
     paste0('LOAD CSV WITH HEADERS FROM "', receiver_url, '" AS row'),
@@ -923,7 +913,8 @@ generate_neo4j_cloud_load_script = function(
     "      r.receptor_gte_10       = toFloat(coalesce(row.Receptor_gte_10, 0.0)),",
     "      r.receptor_is_marker    = toBoolean(coalesce(row.Receptor_Cluster_Marker, false)),",
     "      r.receptor_cells_exp    = toFloat(coalesce(row.Receptor_Cells_Exp, 0.0)),",
-    "      r.receptor_avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0));\n"
+    "      r.receptor_avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0)),",
+    "      r.Direction             = row.Direction;\n"
   )
 
   if (length(pathway_urls) > 0) {
@@ -953,7 +944,8 @@ generate_neo4j_cloud_load_script = function(
       "      r.adj_p_value             = toFloat(coalesce(row.Adjusted_P_value, 999)),",
       "      r.combined_score          = toFloat(coalesce(row.Combined_Score, 0.0)),",
       "      r.matching_receptors      = split(coalesce(row.Matching_Receptors, ''), ';'),",
-      "      r.additional_linked_genes = split(coalesce(row.Genes, ''), ';');"
+      "      r.additional_linked_genes = split(coalesce(row.Genes, ''), ';'),",
+      "      r.Path_Receptor_Direction  = row.Path_Receptor_Direction;"
     )
   }
 
@@ -1122,11 +1114,13 @@ run_full_scSignalMap_pipeline = function(
       )
 
       # Combine the up and down regulated receptor filtered pathaways from enrichr and add labeling for Neo4j
-      enrichr_filtered_all = dplyr::bind_rows(enrichr_filtered_up %>% 
-                                             dplyr::mutate(Path_Receptor_Direction = "Upreg DE Receptor"),
-                                             enrichr_filtered_down %>%
-                                             dplyr::mutate(Path_Receptor_Direction = "Downreg DE Receptor") %>%
-                             dplyr::distinct()
+      enrichr_filtered_all = dplyr::bind_rows(
+        enrichr_filtered_up %>% 
+          dplyr::mutate(Path_Receptor_Direction = "Upreg DE Receptor"),
+        enrichr_filtered_down %>% 
+          dplyr::mutate(Path_Receptor_Direction = "Downreg DE Receptor")
+      ) %>%
+        dplyr::distinct()
                                              
       
       ###################################
