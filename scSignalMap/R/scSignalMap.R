@@ -261,7 +261,7 @@ find_upreg_downreg_receptors = function(de_condition_filtered= NULL, FC_cutoff =
 
     downreg_receptors = downreg_receptors[, c("gene_symbol", setdiff(names(downreg_receptors), "gene_symbol"))]
 
-    return(upreg_receptors, downreg_receptors)
+    return(list(upreg = upreg_receptors, downreg = downreg_receptors))
 }
 
 
@@ -327,7 +327,7 @@ intersect_upreg_downreg_receptors_with_lr_interactions = function(upreg_receptor
       interactions %>% dplyr::select(Ligand_Symbol, Receptor_Symbol, Receiver),
       by = c("gene_symbol" = "Receptor_Symbol"))
   
-  return(upreg_receptors_filtered_and_compared, downreg_receptors_filtered_and_compared)
+  return(list(upreg_filt = upreg_receptors_filtered_and_compared, downreg_filt = downreg_receptors_filtered_and_compared))
 }
 
 
@@ -992,10 +992,12 @@ run_full_scSignalMap_pipeline = function(
         ensdb = ensdb)
       
       message("Finding upregulated receptors...")
-      upreg_receptors = find_upreg_receptors(
+      receptors_results = find_upreg_downreg_receptors(
         de_condition_filtered = de_cond_celltype,
         FC_cutoff = FC_cutoff, 
         species=species)
+      upreg_receptors = receptors_results$upreg
+      downreg_receptors = receptors_results$downreg
       
       message("Filtering LR interactions...")
       interactions_filtered = filter_lr_interactions(
@@ -1005,13 +1007,15 @@ run_full_scSignalMap_pipeline = function(
         secreted_lig = secreted_lig)
       
       message("Intersecting receptors with interactions...")
-      upreg_receptors_filtered_and_compared =
-        intersect_upreg_receptors_with_lr_interactions(
+      receptors_filtered_and_compared_results =
+        intersect_upreg_downreg_receptors_with_lr_interactions(
           upreg_receptors = upreg_receptors,
           interactions = interactions_filtered)
+      upreg_receptors_filtered_and_compared = receptors_filtered_and_compared_results$upreg_filt
+      downreg_receptors_filtered_and_compared = receptors_filtered_and_compared_results$downreg_filt
       
-      # Save the ligand-receptor pairs that survived upregulation filtering for post-processing
-      relevant_lr_pairs = upreg_receptors_filtered_and_compared %>%
+      # Save the ligand-receptor pairs that survived up and down regulation filtering for post-processing
+      relevant_lr_pairs = c(upreg_receptors_filtered_and_compared, downreg_receptors_filtered_and_compared) %>%
         dplyr::select(Ligand_Symbol, Receptor_Symbol = gene_symbol, Receiver) %>%
         dplyr::distinct() %>%
         dplyr::filter(!is.na(Ligand_Symbol) & !is.na(Receptor_Symbol))
