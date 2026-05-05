@@ -563,7 +563,7 @@ export_for_neo4j = function(
       Ligand_Cells_Exp,
       Ligand_Cluster_Marker,
       Ligand_Avg_Exp,
-      ligand_avg_log2FC,
+      ligand_avg_log2FC
     ) %>%
     dplyr::distinct()
 
