@@ -1033,7 +1033,9 @@ run_full_scSignalMap_pipeline = function(
   pb$tick(0)  # initialize
   for (sender in sender_celltypes) {
     for(receiver in receiver_celltypes) {
-      
+      if (sender == receiver) {
+        next   # Skip autocrine loops (Sender == Receiver)
+      }
       receiver_clean = clean_name(receiver)
       sender_clean = clean_name(sender)
       pair_name = paste0(sender_clean, "_", receiver_clean)
