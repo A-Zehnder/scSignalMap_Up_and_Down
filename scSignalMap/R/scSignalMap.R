@@ -712,7 +712,7 @@ generate_neo4j_local_load_script = function(
     "      r.receptor_is_marker    = toBoolean(coalesce(row.Receptor_Cluster_Marker, false)),",
     "      r.receptor_cells_exp    = toFloat(coalesce(row.Receptor_Cells_Exp, 0.0)),",
     "      r.receptor_avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0)),",
-    "      r.receptor_avg_log2FC   = toFloat(coalesce(row.avg_log2FC, 0.0)),",
+    "      r.receptor_avg_log2FC   = toFloat(coalesce(row.receptor_avg_log2FC, 0.0)),",
     "      r.Direction             = row.Direction;\n"
   )
 
@@ -895,7 +895,7 @@ generate_neo4j_cloud_load_script = function(
     "      r.ligand_gte_10       = toFloat(coalesce(row.Ligand_gte_10, 0.0)),",
     "      r.ligand_is_marker    = toBoolean(coalesce(row.Ligand_Cluster_Marker, false)),",
     "      r.ligand_cells_exp    = toFloat(coalesce(row.Ligand_Cells_Exp, 0.0)),",
-    "      r.ligand_avg_log2FC   = toFloat(coalesce(row.avg_log2FC, 0.0)),",
+    "      r.ligand_avg_log2FC   = toFloat(coalesce(row.ligand_avg_log2FC, 0.0)),",
     "      r.ligand_avg_exp      = toFloat(coalesce(row.Ligand_Avg_Exp, 0.0));\n",
 
     "// 2. Ligand_Symbol → Receptor_Symbol",
@@ -920,7 +920,7 @@ generate_neo4j_cloud_load_script = function(
     "      r.receptor_is_marker    = toBoolean(coalesce(row.Receptor_Cluster_Marker, false)),",
     "      r.receptor_cells_exp    = toFloat(coalesce(row.Receptor_Cells_Exp, 0.0)),",
     "      r.receptor_avg_exp      = toFloat(coalesce(row.Receptor_Avg_Exp, 0.0)),",
-    "      r.receptor_avg_log2FC   = toFloat(coalesce(row.avg_log2FC, 0.0)),",
+    "      r.receptor_avg_log2FC   = toFloat(coalesce(row.receptor_avg_log2FC, 0.0)),",
     "      r.Direction             = row.Direction;\n"
   )
 
@@ -1094,30 +1094,35 @@ run_full_scSignalMap_pipeline = function(
 
       # Extract ligand log2FC from sender DE results
       ligand_de = de_sender %>%
-        dplyr::select(gene_symbol, ligand_avg_log2FC = avg_log2FC, 
+        dplyr::select(gene_symbol, 
+                      ligand_avg_log2FC = avg_log2FC, 
                       ligand_p_val_adj = p_val_adj) %>%
         dplyr::distinct()
-      
-      # Save the ligand-receptor pairs that survived up and down regulation filtering for post-processing
-      relevant_lr_pairs = dplyr::bind_rows(upreg_receptors_filtered_and_compared %>% 
-                                           dplyr::mutate(Direction = "Up"), 
-                                           downreg_receptors_filtered_and_compared %>% 
-                                           dplyr::mutate(Direction = "Down")) %>%
+
+      # Save the ligand-receptor pairs that survived filtering + add ligand log2FC
+      relevant_lr_pairs = dplyr::bind_rows(
+          upreg_receptors_filtered_and_compared %>% dplyr::mutate(Direction = "Up"), 
+          downreg_receptors_filtered_and_compared %>% dplyr::mutate(Direction = "Down")
+        ) %>%
         dplyr::left_join(
           ligand_de,
           by = c("Ligand_Symbol" = "gene_symbol")
-        dplyr::select(Ligand_Symbol, Receptor_Symbol = gene_symbol, Receiver, Direction,
-                      receptor_avg_log2FC = avg_log2FC, ligand_avg_log2FC, ligand_p_val_adj) %>%
+        ) %>%
+        dplyr::select(
+          Ligand_Symbol,
+          Receptor_Symbol = gene_symbol,
+          Receiver,
+          Direction,
+          receptor_avg_log2FC = avg_log2FC,
+          ligand_avg_log2FC,
+          ligand_p_val_adj
+        ) %>%
         dplyr::distinct() %>%
         dplyr::filter(!is.na(Ligand_Symbol) & !is.na(Receptor_Symbol))
-      
-      if (nrow(relevant_lr_pairs) == 0) {
-        message("Warning: No ligand-receptor pairs linked to DE receptors for ",
-                sender_clean, " → ", receiver_clean)
-      } else {
-        message("Found ", nrow(relevant_lr_pairs),
-                " unique L-R pairs connected to DE receptors for this pair.")
-      }
+
+      message("Found ", nrow(relevant_lr_pairs),
+              " L-R pairs with ligand + receptor log2FC for ", 
+              sender_clean, " → ", receiver_clean)
       all_results[[pair_name]]$relevant_lr_pairs = relevant_lr_pairs
       
       message("Running pathway enrichment...")
