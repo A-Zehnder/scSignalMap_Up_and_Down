@@ -361,7 +361,7 @@ find_enriched_pathways = function(seurat_obj = NULL, de_condition_filtered = NUL
   background_genes = AnnotationDbi::select(eval(parse(text=ensdb)), keys = background_genes, keytype = "GENEID", columns = c("SYMBOL"))
 
   # Conduct enrichment analysis using Enrichr
-  enrichment_results = enrichR::enrichr(genes, enrichr_databases, background = background_genes[,'SYMBOL'])
+  enrichment_results = enrichR::enrichr(genes, enrichr_databases, background = background_genes[,'SYMBOL'], include_overlap = TRUE)
 
   # Add adjusted p-value
   for (db in names(enrichment_results)) {
